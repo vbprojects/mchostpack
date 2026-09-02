@@ -54,8 +54,18 @@ After diagnostics, let the daemon exit or stop the Machine. A status ping should
 Use the guard script with the image digest printed by the publish workflow:
 
 ```bash
-./scripts/deploy.sh YOUR_UNIQUE_APP ghcr.io/OWNER/REPO@sha256:DIGEST
+image_ref=$(./scripts/image-ref.sh)
+./scripts/deploy.sh YOUR_UNIQUE_APP "$image_ref"
 ```
+
+`image-ref.sh` automatically selects the newest successful `Publish image`
+workflow run. Pass `OWNER/REPO` as its first argument when running it outside
+this repository.
+
+The deployment script preserves the Fly organization slug already recorded in
+OpenTofu state. For a new state, set `HOSTPACK_FLY_ORG` to the organization
+slug shown by `fly orgs list`; this avoids replacement caused by Fly's
+`personal` organization alias.
 
 It refuses to update an active Machine. Do not use `HOSTPACK_FORCE_DEPLOY=1` while players are connected; it bypasses the clean-save protection.
 

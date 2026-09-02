@@ -67,8 +67,7 @@ resource "fly_machine" "hostpack" {
     }
 
     port {
-      port     = 25565
-      handlers = []
+      port = 25565
     }
   }
 }

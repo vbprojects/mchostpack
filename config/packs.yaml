@@ -1,5 +1,5 @@
 schema: 1
-domain: 149-248-223-166.sslip.io
+domain: 137-66-9-53.sslip.io
 
 runtime:
   startup_wait: 25s
