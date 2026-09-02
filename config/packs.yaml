@@ -1,0 +1,24 @@
+schema: 1
+domain: mc.example.com
+
+runtime:
+  startup_wait: 25s
+  status_idle_exit: 30s
+  empty_before_switch: 2m
+  idle_before_stop: 10m
+  backend_poll_interval: 10s
+  shutdown_timeout: 2m
+  max_connections: 128
+  connections_per_minute: 30
+  listen_address: ":25565"
+  backend_address: "127.0.0.1:25566"
+
+capacity:
+  memory_mb: 12288
+
+storage:
+  driver: filesystem
+  filesystem:
+    root: /state/backups
+
+packs: {}

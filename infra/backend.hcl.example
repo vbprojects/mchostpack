@@ -1,0 +1,9 @@
+bucket                      = "hostpack-tofu-state"
+key                         = "private-beta/terraform.tfstate"
+region                      = "auto"
+endpoints                   = { s3 = "https://t3.storage.dev" }
+use_path_style              = false
+skip_credentials_validation = true
+skip_region_validation      = true
+skip_requesting_account_id  = true
+skip_metadata_api_check     = true

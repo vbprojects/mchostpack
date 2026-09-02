@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+dist/
+coverage.out
+state/
+tmp/
+*.log
+secrets/

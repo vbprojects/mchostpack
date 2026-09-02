@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go test -race ./...
+      - run: go vet ./...
+      - run: go run ./cmd/hostpackd config validate --config config/packs.yaml --lock config/packs.lock.json --state /tmp/hostpack-state
+      - name: Enforce immutable pack IDs
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          git show "origin/${{ github.base_ref }}:config/packs.lock.json" > /tmp/previous-packs.lock.json
+          go run ./cmd/hostpackd lock --check --config config/packs.yaml --lock config/packs.lock.json --previous /tmp/previous-packs.lock.json
+      - run: test -z "$(gofmt -l cmd internal)"
+
+  tofu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - run: tofu -chdir=infra fmt -check
+      - run: tofu -chdir=infra init -backend=false
+      - run: tofu -chdir=infra validate
+
+  storage-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: sudo apt-get update && sudo apt-get install -y rclone
+      - run: >-
+          docker run -d --name hostpack-minio -p 9000:9000
+          -e MINIO_ROOT_USER=hostpack
+          -e MINIO_ROOT_PASSWORD=hostpack-secret
+          quay.io/minio/minio server /data
+      - run: |
+          for attempt in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:9000/minio/health/live && break
+            sleep 1
+          done
+      - run: go test ./internal/store -run 'Contract'
+        env:
+          TEST_S3_ENDPOINT: http://127.0.0.1:9000
+          AWS_ACCESS_KEY_ID: hostpack
+          AWS_SECRET_ACCESS_KEY: hostpack-secret
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: hostpack:ci
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: hostpack:ci
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+      - uses: anchore/sbom-action@v0
+        with:
+          image: hostpack:ci
+          artifact-name: hostpack.spdx.json

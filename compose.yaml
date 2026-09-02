@@ -1,0 +1,15 @@
+services:
+  hostpackd:
+    build: .
+    environment:
+      HOSTPACK_CONFIG: /app/config/packs.yaml
+      HOSTPACK_LOCK: /app/config/packs.lock.json
+      HOSTPACK_STATE: /state
+      RCON_PASSWORD: ${RCON_PASSWORD:-local-development-only}
+      CF_API_KEY: ${CF_API_KEY:-}
+    ports:
+      - "25565:25565"
+    volumes:
+      - ./config:/app/config:ro
+      - ./state:/state
+    stop_grace_period: 3m

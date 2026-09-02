@@ -1,0 +1,6 @@
+app_name = "replace-with-a-unique-fly-app"
+org_slug = "personal"
+region   = "iad"
+
+# CI prints the pushed image digest. Tags are intentionally rejected.
+image_ref = "ghcr.io/your-account/hostpack@sha256:replace"
