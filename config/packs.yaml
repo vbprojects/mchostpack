@@ -1,5 +1,5 @@
 schema: 1
-domain: mc.example.com
+domain: 149-248-223-166.sslip.io
 
 runtime:
   startup_wait: 25s
@@ -14,11 +14,18 @@ runtime:
   backend_address: "127.0.0.1:25566"
 
 capacity:
-  memory_mb: 12288
+  memory_mb: 2048
 
 storage:
   driver: filesystem
   filesystem:
     root: /state/backups
 
-packs: {}
+packs:
+  sfs:
+    display_name: Standard Fabric Server 1.21.1
+    provider: modrinth
+    project_id: r5ygbOIe
+    version_id: FCnyrYJ4
+    java: 21
+    memory_mb: 1536

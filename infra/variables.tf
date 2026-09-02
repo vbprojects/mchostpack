@@ -25,18 +25,20 @@ variable "image_ref" {
 }
 
 variable "cpus" {
-  type    = number
-  default = 4
+  description = "Shared CPU count for the inexpensive MVP test machine."
+  type        = number
+  default     = 2
 }
 
 variable "memory_mb" {
-  type    = number
-  default = 12288
+  description = "Guest memory for the lightweight Modrinth test pack."
+  type        = number
+  default     = 2048
 }
 
 variable "volume_size_gb" {
   type    = number
-  default = 30
+  default = 15
 }
 
 variable "snapshot_retention" {

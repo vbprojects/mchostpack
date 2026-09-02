@@ -1,5 +1,16 @@
 {
   "schema": 1,
-  "configDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "packs": {}
+  "configDigest": "f167c8b1c5618786b2a06b0a4c4e3cbb2a093ad9ac390af5fd8d0fd320bee0c3",
+  "packs": {
+    "sfs": {
+      "provider": "modrinth",
+      "projectId": "r5ygbOIe",
+      "versionId": "FCnyrYJ4",
+      "minecraftVersion": "1.21.1",
+      "loader": "fabric",
+      "java": 21,
+      "artifactHash": "sha512:89965c7feb9c6741f584e0d179e3e6f6a201c4b7c7f8188d2f91940715788a382e247abe47459649d62911bdf7c13df701d86e2b344ed95b4c52ea1ffbd80f67",
+      "identityDigest": "2bbab2217125bc9ea8c168aedbc8cdd60e33d1bee6d66d0dbacb01d172d1e7f0"
+    }
+  }
 }

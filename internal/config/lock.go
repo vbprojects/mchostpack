@@ -169,11 +169,13 @@ func (r *Resolver) get(ctx context.Context, url string, target any, key bool) er
 
 func (r *Resolver) resolveModrinth(ctx context.Context, p Pack) (LockedPack, error) {
 	var v struct {
-		ID, ProjectID         string
-		GameVersions, Loaders []string
-		Files                 []struct {
-			Primary bool
-			Hashes  map[string]string
+		ID           string   `json:"id"`
+		ProjectID    string   `json:"project_id"`
+		GameVersions []string `json:"game_versions"`
+		Loaders      []string `json:"loaders"`
+		Files        []struct {
+			Primary bool              `json:"primary"`
+			Hashes  map[string]string `json:"hashes"`
 		}
 	}
 	if err := r.get(ctx, r.ModrinthBase+"/version/"+p.VersionID, &v, false); err != nil {
