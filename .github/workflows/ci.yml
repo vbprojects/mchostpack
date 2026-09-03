@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@v2
       - run: tofu -chdir=infra fmt -check
       - run: tofu -chdir=infra init -backend=false
       - run: tofu -chdir=infra validate
