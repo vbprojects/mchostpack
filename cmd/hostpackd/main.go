@@ -251,7 +251,7 @@ func doctor(args []string) error {
 	checks := []struct {
 		name string
 		err  error
-	}{{"state root", writable(c.stateRoot)}, {"Java 17", executable("/opt/java17/bin/java")}, {"Java 21", executable("/opt/java21/bin/java")}, {"start command", executable(envDefault("HOSTPACK_START_COMMAND", "/start"))}}
+	}{{"state runtime", writable(filepath.Join(c.stateRoot, "runtime"))}, {"Java 17", executable("/opt/java17/bin/java")}, {"Java 21", executable("/opt/java21/bin/java")}, {"start command", executable(envDefault("HOSTPACK_START_COMMAND", "/start"))}}
 	st, storeErr := makeStore(cfg, lock, c.stateRoot)
 	if storeErr == nil {
 		_, _, storeErr = st.Head(context.Background(), firstPack(cfg))

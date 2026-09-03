@@ -22,7 +22,7 @@ storage:
   s3:
     endpoint: https://fly.storage.tigris.dev
     region: auto
-    bucket: mchostpack-urz-worlds
+    bucket: mchostpack-urz-worlds-v2
     prefix: hostpack/worlds
 
 packs:
