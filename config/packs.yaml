@@ -40,6 +40,7 @@ packs:
     machine_cpus: 2
   cobblemon:
     display_name: Cobblemon Official NeoForge 1.7.3
+    pack_url: https://modrinth.com/modpack/cobblemon-neoforge
     provider: modrinth
     project_id: mHMxXbIu
     version_id: VJ9Jur2k

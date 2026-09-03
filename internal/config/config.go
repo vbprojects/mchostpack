@@ -78,6 +78,7 @@ type RcloneConfig struct {
 
 type Pack struct {
 	DisplayName          string   `yaml:"display_name" json:"displayName"`
+	PackURL              string   `yaml:"pack_url,omitempty" json:"packUrl,omitempty"`
 	Provider             string   `yaml:"provider" json:"provider"`
 	ProjectID            string   `yaml:"project_id" json:"projectId"`
 	VersionID            string   `yaml:"version_id,omitempty" json:"versionId,omitempty"`

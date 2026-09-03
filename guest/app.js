@@ -27,6 +27,15 @@ function renderPacks() {
     meta.className = "meta";
     meta.textContent = `${pack.provider} · Java ${pack.java}`;
     details.append(heading, meta);
+    if (pack.packUrl) {
+      const packLink = document.createElement("a");
+      packLink.className = "pack-link";
+      packLink.href = pack.packUrl;
+      packLink.target = "_blank";
+      packLink.rel = "noopener noreferrer";
+      packLink.textContent = "Pack page";
+      details.append(packLink);
+    }
     const addressRow = document.createElement("div");
     addressRow.className = "address-row";
     const address = document.createElement("span");

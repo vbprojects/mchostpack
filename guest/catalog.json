@@ -3,6 +3,7 @@
     {
       "id": "cobblemon",
       "displayName": "Cobblemon Official NeoForge 1.7.3",
+      "packUrl": "https://modrinth.com/modpack/cobblemon-neoforge",
       "hostname": "cobblemon.137-66-9-53.sslip.io",
       "provider": "modrinth",
       "java": 21

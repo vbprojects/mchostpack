@@ -11,6 +11,7 @@ import (
 type GuestPack struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"displayName"`
+	PackURL     string `json:"packUrl,omitempty"`
 	Hostname    string `json:"hostname"`
 	Provider    string `json:"provider"`
 	Java        int    `json:"java"`
@@ -36,7 +37,7 @@ func Catalog(cfg *config.Config) GuestCatalog {
 	result := GuestCatalog{Packs: make([]GuestPack, 0, len(ids))}
 	for _, id := range ids {
 		pack := cfg.Packs[id]
-		result.Packs = append(result.Packs, GuestPack{ID: id, DisplayName: pack.DisplayName, Hostname: id + "." + cfg.Domain, Provider: pack.Provider, Java: pack.Java})
+		result.Packs = append(result.Packs, GuestPack{ID: id, DisplayName: pack.DisplayName, PackURL: pack.PackURL, Hostname: id + "." + cfg.Domain, Provider: pack.Provider, Java: pack.Java})
 	}
 	return result
 }
