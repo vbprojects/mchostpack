@@ -27,3 +27,35 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
       - run: echo "Deploy ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}"
+
+  deploy:
+    name: Deploy to Fly
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP_NAME: ${{ vars.FLY_APP_NAME }}
+    steps:
+      - name: Check deployment configuration
+        run: |
+          test -n "$FLY_API_TOKEN" || { echo 'Missing repository secret FLY_API_TOKEN' >&2; exit 1; }
+          test -n "$FLY_APP_NAME" || { echo 'Missing repository variable FLY_APP_NAME' >&2; exit 1; }
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Find singleton Machine
+        id: machine
+        run: |
+          machines="$(flyctl machines list --app "$FLY_APP_NAME" --json)"
+          machine_id="$(printf '%s' "$machines" | jq -r '.[] | select(.name == "hostpack-singleton") | .id' | head -1)"
+          test -n "$machine_id" && test "$machine_id" != "null" || { echo 'hostpack-singleton was not found' >&2; exit 1; }
+          state="$(printf '%s' "$machines" | jq -r --arg id "$machine_id" '.[] | select(.id == $id) | .state')"
+          test "$state" = stopped || { echo "refusing automatic deploy while Machine is $state" >&2; exit 1; }
+          echo "id=$machine_id" >> "$GITHUB_OUTPUT"
+      - name: Update stopped Machine image
+        run: >-
+          flyctl machine update "${{ steps.machine.outputs.id }}"
+          --app "$FLY_APP_NAME"
+          --image "ghcr.io/${{ github.repository }}:${{ github.sha }}"
+          --skip-start --yes

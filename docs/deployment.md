@@ -118,6 +118,30 @@ OpenTofu state. For a new state, set `HOSTPACK_FLY_ORG` to the organization
 slug shown by `fly orgs list`; this avoids replacement caused by Fly's
 `personal` organization alias.
 
+## Automatic image deployment
+
+The `Publish image` workflow automatically updates the existing stopped
+`hostpack-singleton` Machine after every successful push to `main`. It refuses
+to update a Machine that is running, so an active server is never replaced by
+CI. The existing volume, dedicated IPv4, and app are preserved.
+
+Configure these repository settings once:
+
+- **Actions secret** `FLY_API_TOKEN`: an app-scoped Fly deploy token.
+- **Actions variable** `FLY_APP_NAME`: the Fly app name, such as `mchostpack-urz`.
+
+Create the token locally while authenticated as the Fly owner, then add its
+value under **GitHub → Settings → Secrets and variables → Actions**:
+
+```bash
+fly tokens create deploy --app YOUR_UNIQUE_APP --expiry 8760h
+```
+
+This workflow deploys the immutable commit tag produced by the image build.
+It does not run OpenTofu, change secrets, resize the Machine, or deploy while
+players may be connected. Use the guarded `scripts/deploy.sh` process for
+infrastructure changes, secret activation, or a replacement Machine.
+
 When an image digest changes, the script replaces only the stopped Machine and
 reattaches the existing volume. This works around a lease-handling defect in
 `stategraph/fly` 0.2.4's in-place Machine update path. The application,
