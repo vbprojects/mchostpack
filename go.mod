@@ -3,7 +3,7 @@ module github.com/hostpack/hostpack
 go 1.25.0
 
 require (
-	github.com/klauspost/compress v1.18.0
+	github.com/klauspost/compress v1.19.2
 	github.com/minio/minio-go/v7 v7.0.95
 	gopkg.in/yaml.v3 v3.0.1
 )
