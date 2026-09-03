@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if ! command -v fly >/dev/null 2>&1; then
+  if [[ -x "$HOME/.fly/bin/fly" ]]; then
+    export PATH="$HOME/.fly/bin:$PATH"
+  else
+    echo "flyctl is required; install it before deploying" >&2
+    exit 2
+  fi
+fi
+
 if [[ $# -ne 2 ]]; then
   echo "usage: $0 <fly-app-name> <image@sha256:digest>" >&2
   exit 2
