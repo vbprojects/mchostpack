@@ -17,6 +17,13 @@ the `HOSTPACK_WEB_PASSWORD` Fly secret. Opening it wakes the Machine; continuous
 polling keeps it awake, and closing it allows a status-only Machine to exit
 after 30 seconds.
 
+The separate guest site is published at
+`https://vbprojects.github.io/mchostpack/`. It is static and remains available
+while Fly is stopped. Loading the page does not contact Fly; only its explicit
+live-status button does. The public response contains the lifecycle phase and
+active pack name, but omits internal errors, lock digests, backup details, and
+resource configuration.
+
 `RESIZING` means Hostpack submitted a Fly Machine CPU/RAM update before Java
 started. The update reboots the VM and recovery continues the requested pack;
 the player should reconnect. If it becomes `FAILED`, confirm

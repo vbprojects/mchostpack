@@ -74,6 +74,23 @@ https://YOUR_UNIQUE_APP.fly.dev
 Sign in as `hostpack` using `HOSTPACK_WEB_PASSWORD`. Port 80 redirects to HTTPS;
 do not send dashboard credentials over plain HTTP outside local development.
 
+## Guest page
+
+The `Deploy guest page` GitHub Actions workflow publishes `guest/` through
+GitHub Pages. In the repository's **Settings → Pages**, select **GitHub
+Actions** as the source. Each main-branch push regenerates the public catalog
+from `packs.yaml` and deploys it to:
+
+```text
+https://OWNER.github.io/REPOSITORY/
+```
+
+Ordinary page loads are fully static. The explicit live-status button calls
+the unauthenticated, read-only `/api/guest-status` endpoint. That endpoint
+returns only phase, active pack, and state-change time; it does not extend the
+Machine's idle deadline. Update `STATUS_ENDPOINT` and the page CSP in
+`guest/app.js` and `guest/index.html` if the Fly application name changes.
+
 Start the stopped Machine once for diagnostics:
 
 ```bash

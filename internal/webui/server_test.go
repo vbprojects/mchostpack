@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hostpack/hostpack/internal/config"
@@ -76,6 +77,33 @@ func TestHealthDoesNotRequireAuthenticationOrKeepMachineAwake(t *testing.T) {
 	server.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	if recorder.Code != http.StatusOK || state.touches != 0 {
 		t.Fatalf("health response = %d, touches = %d", recorder.Code, state.touches)
+	}
+}
+
+func TestGuestStatusIsSanitizedAndDoesNotKeepMachineAwake(t *testing.T) {
+	logs := testLogBuffer(t)
+	state := &fakeState{state: hpruntime.State{Phase: hpruntime.Failed, ActiveID: "alpha", Generation: 9, BackupPending: true, LastError: "sensitive operator detail", PackLockDigest: "secret-ish"}}
+	server := New(testConfig(), state, logs, "hostpack", "correct horse battery staple").Handler()
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/guest-status", nil))
+	if recorder.Code != http.StatusOK || state.touches != 0 {
+		t.Fatalf("guest response = %d, touches = %d", recorder.Code, state.touches)
+	}
+	var response GuestStatus
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Phase != hpruntime.Failed || response.ActiveName != "Alpha" {
+		t.Fatalf("unexpected guest response: %+v", response)
+	}
+	body := recorder.Body.String()
+	for _, forbidden := range []string{"sensitive operator detail", "secret-ish", "backupPending", "generation"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("guest response exposed %q: %s", forbidden, body)
+		}
+	}
+	if recorder.Header().Get("Access-Control-Allow-Origin") != "*" {
+		t.Fatal("guest endpoint is not readable by the static site")
 	}
 }
 

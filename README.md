@@ -18,6 +18,7 @@ This repository is an MVP intended for a small, operator-managed deployment. It 
 - OpenTofu provisioning for one Fly app, dedicated IPv4, volume, and stopped Machine.
 - Manual, digest-pinned deployment guarded against replacing an active Machine.
 - Authenticated web status, resource summaries, and bounded recent logs.
+- Serverless GitHub Pages guest catalog with an explicit sanitized live-status check.
 
 ## Quick local validation
 
@@ -45,6 +46,11 @@ docker compose up --build
 The local dashboard is available at `http://localhost:8080`. Its default local
 credentials are `hostpack` / `local-dashboard-only`; set
 `HOSTPACK_WEB_PASSWORD` in `.env` before sharing the port.
+
+The public guest page is generated from `packs.yaml` by the `Deploy guest page`
+workflow and contains no credentials. Normal visits never wake Fly. Its
+optional **Check live status** button briefly wakes only the Hostpack router and
+shows a sanitized lifecycle state without logs, errors, backups, or controls.
 
 CurseForge lock generation requires `CF_API_KEY`. Never commit `.env`, rclone configuration, RCON passwords, or object-storage credentials.
 

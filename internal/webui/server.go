@@ -52,6 +52,7 @@ func (s *Server) Handler() http.Handler {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok\n"))
 	})
+	mux.HandleFunc("GET /api/guest-status", s.guestStatus)
 	mux.HandleFunc("GET /", s.page)
 	mux.HandleFunc("GET /assets/app.css", s.styles)
 	mux.HandleFunc("GET /assets/app.js", s.script)
@@ -62,7 +63,7 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" {
+		if r.URL.Path == "/healthz" || r.URL.Path == "/api/guest-status" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -77,6 +78,11 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		s.state.Touch()
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *Server) guestStatus(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	writeJSON(w, PublicStatus(s.cfg, s.state.State()))
 }
 
 func securityHeaders(next http.Handler) http.Handler {

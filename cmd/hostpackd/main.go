@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -34,6 +35,7 @@ Commands:
   lock [--check]     Generate or verify packs.lock.json
   backup list        List the newest backup for each configured pack
   backup restore ID  Restore a pack into an absent instance directory
+  guest export       Generate the sanitized GitHub Pages pack catalog
   doctor             Check runtime prerequisites and storage connectivity
 `
 
@@ -58,6 +60,8 @@ func run(args []string) error {
 		return lockCommand(args[1:])
 	case "backup":
 		return backupCommand(args[1:])
+	case "guest":
+		return guestCommand(args[1:])
 	case "doctor":
 		return doctor(args[1:])
 	case "help", "--help", "-h":
@@ -65,6 +69,27 @@ func run(args []string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown command\n%s", usage)
+}
+
+func guestCommand(args []string) error {
+	if len(args) == 0 || args[0] != "export" {
+		return errors.New("guest requires export")
+	}
+	fs := flag.NewFlagSet("guest export", flag.ContinueOnError)
+	configPath := fs.String("config", envDefault("HOSTPACK_CONFIG", "/app/config/packs.yaml"), "packs.yaml path")
+	outputPath := fs.String("output", "guest/catalog.json", "generated catalog path")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(webui.Catalog(cfg), "", "  ")
+	if err != nil {
+		return err
+	}
+	return atomicWrite(*outputPath, append(data, '\n'), 0o644)
 }
 
 type commonFlags struct{ configPath, lockPath, stateRoot string }

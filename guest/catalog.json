@@ -1,0 +1,18 @@
+{
+  "packs": [
+    {
+      "id": "cobblemon",
+      "displayName": "Cobblemon Official NeoForge 1.7.3",
+      "hostname": "cobblemon.137-66-9-53.sslip.io",
+      "provider": "modrinth",
+      "java": 21
+    },
+    {
+      "id": "sfs",
+      "displayName": "Standard Fabric Server 1.21.1",
+      "hostname": "sfs.137-66-9-53.sslip.io",
+      "provider": "modrinth",
+      "java": 21
+    }
+  ]
+}
