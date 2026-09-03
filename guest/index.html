@@ -25,6 +25,13 @@
       <strong>Connecting</strong>
       <p>The server starts when somebody joins. On the first attempt, wait for the startup message and reconnect after a few minutes.</p>
     </aside>
+    <section class="setup" aria-labelledby="setup-heading">
+      <h2 id="setup-heading">Adding a modpack</h2>
+      <p>This page is read-only. The server owner adds packs in <code>config/packs.yaml</code>.</p>
+      <p><strong>Modrinth:</strong> use the project ID from the project API and the exact version ID from that project's versions list.</p>
+      <p><strong>CurseForge:</strong> use the numeric project ID and exact file ID from a modpack file URL. CurseForge requires an API key kept by the server owner.</p>
+      <p><a href="https://docs.modrinth.com/api/operations/getprojectversions/" target="_blank" rel="noopener noreferrer">Modrinth version API</a> · <a href="https://docs.curseforge.com/rest-api/" target="_blank" rel="noopener noreferrer">CurseForge API</a></p>
+    </section>
     <footer>Checking status briefly wakes the router. Minecraft starts only when a player joins.</footer>
   </main>
   <script src="app.js"></script>
