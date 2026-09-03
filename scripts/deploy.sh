@@ -39,7 +39,23 @@ if [[ -n "$machine_json" ]]; then
 fi
 
 tofu -chdir=infra init -backend-config=backend.hcl
-tofu -chdir=infra apply \
-  -var="app_name=$app_name" \
-  -var="image_ref=$image_ref" \
+
+apply_args=(
+  -var="app_name=$app_name"
+  -var="image_ref=$image_ref"
   -var="org_slug=$org_slug"
+)
+
+# stategraph/fly 0.2.4 acquires a Machine lease during in-place updates but
+# does not forward the lease nonce to the update API call. Fly rejects that
+# call with 409. Replace only the stopped Machine when its image changes; the
+# app, dedicated IP, and volume remain intact.
+current_image=$(tofu -chdir=infra state show fly_machine.hostpack 2>/dev/null \
+  | sed -n 's/^[[:space:]]*image[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
+  | head -1 || true)
+if [[ -n "$current_image" && "$current_image" != "$image_ref" ]]; then
+  echo "Machine image changed; replacing the stopped Machine to work around stategraph/fly 0.2.4 lease handling"
+  apply_args+=(-replace=fly_machine.hostpack)
+fi
+
+tofu -chdir=infra apply "${apply_args[@]}"

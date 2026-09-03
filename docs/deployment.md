@@ -25,7 +25,7 @@ tofu -chdir=infra apply \
 Set secrets separately so their values do not enter OpenTofu state:
 
 ```bash
-fly secrets set --app YOUR_UNIQUE_APP \
+fly secrets set --stage --app YOUR_UNIQUE_APP \
   RCON_PASSWORD='LONG_RANDOM_VALUE' \
   CF_API_KEY='CURSEFORGE_KEY' \
   AWS_ACCESS_KEY_ID='BACKUP_KEY' \
@@ -33,6 +33,9 @@ fly secrets set --app YOUR_UNIQUE_APP \
 ```
 
 Only set the variables required by the selected storage driver. For rclone, use its supported `RCLONE_CONFIG_*` secret environment variables or a secret-backed configuration path.
+`--stage` is required because Hostpack provisions a raw Fly Machine rather
+than a Fly Launch release. A staged secret is injected the next time the
+stopped Machine starts.
 
 Create this DNS record using the `dedicated_ipv4` output:
 
@@ -66,6 +69,11 @@ The deployment script preserves the Fly organization slug already recorded in
 OpenTofu state. For a new state, set `HOSTPACK_FLY_ORG` to the organization
 slug shown by `fly orgs list`; this avoids replacement caused by Fly's
 `personal` organization alias.
+
+When an image digest changes, the script replaces only the stopped Machine and
+reattaches the existing volume. This works around a lease-handling defect in
+`stategraph/fly` 0.2.4's in-place Machine update path. The application,
+dedicated IPv4, and volume are not replaced.
 
 It refuses to update an active Machine. Do not use `HOSTPACK_FORCE_DEPLOY=1` while players are connected; it bypasses the clean-save protection.
 

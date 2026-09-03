@@ -48,6 +48,7 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 		start = "/start"
 	}
 	cmd := exec.CommandContext(ctx, start)
+	cmd.Dir = l.DataLink
 	env := append([]string{}, os.Environ()...)
 	env = append(env, "EULA=TRUE", "SERVER_IP=127.0.0.1", "SERVER_PORT=25566", "ENABLE_STATUS=TRUE", "ONLINE_MODE=TRUE", "ENABLE_RCON=TRUE", "RCON_PORT=25575", "RCON_PASSWORD="+l.RCONPassword, "MEMORY="+strconv.Itoa(p.MemoryMB)+"M", "SKIP_CHOWN_DATA=TRUE")
 	if p.Java == 17 {
