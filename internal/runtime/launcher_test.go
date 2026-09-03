@@ -8,6 +8,8 @@ import (
 func TestChildEnvironmentExcludesControlPlaneAndBackupCredentials(t *testing.T) {
 	parent := []string{
 		"PATH=/usr/bin",
+		"HOME=/root",
+		"PWD=/",
 		"HOSTPACK_FLY_API_TOKEN=fly-secret",
 		"FLY_API_TOKEN=fly-secret-2",
 		"AWS_ACCESS_KEY_ID=backup-key",
@@ -19,6 +21,8 @@ func TestChildEnvironmentExcludesControlPlaneAndBackupCredentials(t *testing.T) 
 	}
 	got := childEnvironment(parent)
 	for _, forbidden := range []string{
+		"HOME=/root",
+		"PWD=/",
 		"HOSTPACK_FLY_API_TOKEN=fly-secret",
 		"FLY_API_TOKEN=fly-secret-2",
 		"AWS_ACCESS_KEY_ID=backup-key",

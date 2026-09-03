@@ -50,7 +50,11 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 		start = "/start"
 	}
 	cmd := exec.CommandContext(ctx, start)
-	cmd.Dir = l.DataLink
+	// Run from the real instance path. Some upstream installers emit a SERVER
+	// path relative to the process working directory; using the nested /data
+	// symlink can otherwise produce paths such as ../state/... that do not
+	// resolve from the instance directory on the final exec.
+	cmd.Dir = instance
 	uid, err := childID("HOSTPACK_MINECRAFT_UID", 1000)
 	if err != nil {
 		return nil, err
@@ -64,9 +68,19 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 			return nil, err
 		}
 	}
+	home := filepath.Join(l.StateRoot, "runtime", "tmp", "minecraft-home")
+	if err := os.MkdirAll(home, 0o700); err != nil {
+		return nil, fmt.Errorf("create Minecraft runtime home: %w", err)
+	}
+	if err := os.Chown(home, int(uid), int(gid)); err != nil {
+		return nil, fmt.Errorf("set Minecraft runtime home ownership: %w", err)
+	}
+	if err := os.Chmod(home, 0o700); err != nil {
+		return nil, fmt.Errorf("set Minecraft runtime home permissions: %w", err)
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, NoSetGroups: true}}
 	env := childEnvironment(os.Environ())
-	env = append(env, "EULA=TRUE", "SERVER_IP=127.0.0.1", "SERVER_PORT=25566", "ENABLE_STATUS=TRUE", "ONLINE_MODE=TRUE", "ENABLE_RCON=TRUE", "RCON_PORT=25575", "RCON_PASSWORD="+l.RCONPassword, "MEMORY="+strconv.Itoa(p.MemoryMB)+"M", "SKIP_CHOWN_DATA=TRUE")
+	env = append(env, "HOME="+home, "PWD="+instance, "EULA=TRUE", "SERVER_IP=127.0.0.1", "SERVER_PORT=25566", "ENABLE_STATUS=TRUE", "ONLINE_MODE=TRUE", "ENABLE_RCON=TRUE", "RCON_PORT=25575", "RCON_PASSWORD="+l.RCONPassword, "MEMORY="+strconv.Itoa(p.MemoryMB)+"M", "SKIP_CHOWN_DATA=TRUE")
 	if p.Java == 17 {
 		env = append(env, "PATH=/opt/java17/bin:"+os.Getenv("PATH"), "JAVA_HOME=/opt/java17")
 	} else {
@@ -124,7 +138,9 @@ func childEnvironment(parent []string) []string {
 		"AWS_SESSION_TOKEN":      true,
 		"FLY_API_TOKEN":          true,
 		"FLY_TOKEN":              true,
+		"HOME":                   true,
 		"HOSTPACK_FLY_API_TOKEN": true,
+		"PWD":                    true,
 	}
 	result := make([]string, 0, len(parent))
 	for _, entry := range parent {
