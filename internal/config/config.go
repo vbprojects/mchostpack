@@ -75,15 +75,16 @@ type RcloneConfig struct {
 }
 
 type Pack struct {
-	DisplayName     string `yaml:"display_name" json:"displayName"`
-	Provider        string `yaml:"provider" json:"provider"`
-	ProjectID       string `yaml:"project_id" json:"projectId"`
-	VersionID       string `yaml:"version_id,omitempty" json:"versionId,omitempty"`
-	FileID          int64  `yaml:"file_id,omitempty" json:"fileId,omitempty"`
-	Java            int    `yaml:"java" json:"java"`
-	MemoryMB        int    `yaml:"memory_mb" json:"memoryMb"`
-	MachineMemoryMB int    `yaml:"machine_memory_mb" json:"machineMemoryMb"`
-	MachineCPUs     int    `yaml:"machine_cpus" json:"machineCpus"`
+	DisplayName          string   `yaml:"display_name" json:"displayName"`
+	Provider             string   `yaml:"provider" json:"provider"`
+	ProjectID            string   `yaml:"project_id" json:"projectId"`
+	VersionID            string   `yaml:"version_id,omitempty" json:"versionId,omitempty"`
+	FileID               int64    `yaml:"file_id,omitempty" json:"fileId,omitempty"`
+	Java                 int      `yaml:"java" json:"java"`
+	MemoryMB             int      `yaml:"memory_mb" json:"memoryMb"`
+	MachineMemoryMB      int      `yaml:"machine_memory_mb" json:"machineMemoryMb"`
+	MachineCPUs          int      `yaml:"machine_cpus" json:"machineCpus"`
+	ModrinthExcludeFiles []string `yaml:"modrinth_exclude_files,omitempty" json:"modrinthExcludeFiles,omitempty"`
 }
 
 var dnsLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
@@ -185,8 +186,17 @@ func (c *Config) Validate() error {
 			if pack.FileID <= 0 || pack.VersionID != "" {
 				problems = append(problems, fmt.Sprintf("pack %q requires file_id and no version_id", id))
 			}
+			if len(pack.ModrinthExcludeFiles) != 0 {
+				problems = append(problems, fmt.Sprintf("pack %q modrinth_exclude_files requires the modrinth provider", id))
+			}
 		default:
 			problems = append(problems, fmt.Sprintf("pack %q has unsupported provider", id))
+		}
+		for _, pattern := range pack.ModrinthExcludeFiles {
+			if strings.TrimSpace(pattern) == "" || strings.ContainsAny(pattern, ",\r\n") {
+				problems = append(problems, fmt.Sprintf("pack %q modrinth_exclude_files entries must be non-empty and cannot contain commas or newlines", id))
+				break
+			}
 		}
 	}
 	if len(problems) > 0 {

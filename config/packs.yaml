@@ -45,3 +45,8 @@ packs:
     memory_mb: 3072
     machine_memory_mb: 4096
     machine_cpus: 2
+    # These files otherwise load client classes on the dedicated server.
+    modrinth_exclude_files:
+      - lambdynamiclights
+      - enhanced_attack_indicator
+      - wakes

@@ -58,6 +58,34 @@ func TestPackMachineMemoryLeavesNonHeapHeadroom(t *testing.T) {
 		t.Fatal("allowed Java heap to consume the entire Machine memory")
 	}
 }
+
+func TestModrinthExclusionsAreProviderSpecific(t *testing.T) {
+	c := validConfig()
+	p := c.Packs["alpha"]
+	p.ModrinthExcludeFiles = []string{"client-only"}
+	c.Packs["alpha"] = p
+	if err := c.Validate(); err != nil {
+		t.Fatalf("valid Modrinth exclusion rejected: %v", err)
+	}
+	p.Provider = "curseforge"
+	p.VersionID = ""
+	p.FileID = 1
+	c.Packs["alpha"] = p
+	if err := c.Validate(); err == nil {
+		t.Fatal("allowed Modrinth exclusions on a CurseForge pack")
+	}
+}
+
+func TestModrinthExclusionsRejectAmbiguousSeparators(t *testing.T) {
+	c := validConfig()
+	p := c.Packs["alpha"]
+	p.ModrinthExcludeFiles = []string{"one,two"}
+	c.Packs["alpha"] = p
+	if err := c.Validate(); err == nil {
+		t.Fatal("allowed a comma inside a Modrinth exclusion")
+	}
+}
+
 func TestLockMatch(t *testing.T) {
 	c := validConfig()
 	_ = c.Validate()
@@ -91,6 +119,7 @@ func TestPackResourcesDoNotChangeWorldIdentity(t *testing.T) {
 	p.MemoryMB = 1024
 	p.MachineMemoryMB = 2048
 	p.MachineCPUs = 1
+	p.ModrinthExcludeFiles = []string{"client-only"}
 	if after := packIdentityDigest(p); after != before {
 		t.Fatalf("resource tuning changed immutable world identity: %s != %s", after, before)
 	}

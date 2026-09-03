@@ -71,3 +71,25 @@ func TestRepairModrinthServerPath(t *testing.T) {
 		t.Fatalf("repaired results = %q, want %q", got, want)
 	}
 }
+
+func TestRemoveModrinthExcludedFiles(t *testing.T) {
+	instance := t.TempDir()
+	mods := filepath.Join(instance, "mods")
+	if err := os.Mkdir(mods, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"server-mod.jar", "client-only-1.0.jar"} {
+		if err := os.WriteFile(filepath.Join(mods, name), []byte(name), 0o640); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := removeModrinthExcludedFiles(instance, []string{"client-only"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(mods, "client-only-1.0.jar")); !os.IsNotExist(err) {
+		t.Fatalf("excluded file still exists: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(mods, "server-mod.jar")); err != nil {
+		t.Fatalf("server mod was removed: %v", err)
+	}
+}

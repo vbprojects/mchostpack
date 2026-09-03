@@ -72,6 +72,9 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 		if err := repairModrinthServerPath(instance, uid, gid); err != nil {
 			return nil, err
 		}
+		if err := removeModrinthExcludedFiles(instance, p.ModrinthExcludeFiles); err != nil {
+			return nil, err
+		}
 	}
 	home := filepath.Join(l.StateRoot, "runtime", "tmp", "minecraft-home")
 	if err := os.MkdirAll(home, 0o700); err != nil {
@@ -93,6 +96,9 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 	}
 	if p.Provider == "modrinth" {
 		env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+p.ProjectID, "MODRINTH_VERSION="+p.VersionID)
+		if len(p.ModrinthExcludeFiles) > 0 {
+			env = append(env, "MODRINTH_EXCLUDE_FILES="+strings.Join(p.ModrinthExcludeFiles, ","))
+		}
 	} else {
 		env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+lp.Slug, "CF_FILE_ID="+strconv.FormatInt(p.FileID, 10))
 	}
@@ -208,6 +214,38 @@ func repairModrinthServerPath(instance string, uid, gid uint32) error {
 	}
 	if err = os.Rename(tmpPath, path); err != nil {
 		return fmt.Errorf("replace Modrinth installer results: %w", err)
+	}
+	return nil
+}
+
+func removeModrinthExcludedFiles(instance string, patterns []string) error {
+	if len(patterns) == 0 {
+		return nil
+	}
+	mods := filepath.Join(instance, "mods")
+	entries, err := os.ReadDir(mods)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read Modrinth mods directory: %w", err)
+	}
+	for _, entry := range entries {
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			return fmt.Errorf("inspect Modrinth mod %q: %w", entry.Name(), infoErr)
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		for _, pattern := range patterns {
+			if strings.Contains(entry.Name(), pattern) {
+				if err := os.Remove(filepath.Join(mods, entry.Name())); err != nil {
+					return fmt.Errorf("remove excluded Modrinth file %q: %w", entry.Name(), err)
+				}
+				break
+			}
+		}
 	}
 	return nil
 }

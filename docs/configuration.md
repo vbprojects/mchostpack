@@ -35,6 +35,16 @@ the Fly guest resources selected before that pack starts. Machine memory must
 be a multiple of 256 MB and leave at least 256 MB outside the heap. In
 practice, approximately 25% non-heap headroom is recommended.
 
+Modrinth packs can list `modrinth_exclude_files` when a pack ships client-only
+files whose metadata does not exclude dedicated servers. Entries are filename
+fragments passed to the upstream Modrinth installer. For example:
+
+```yaml
+modrinth_exclude_files:
+  - client-only-mod
+  - another-client-file
+```
+
 The global `capacity.memory_mb` and `capacity.cpus` values are safety ceilings,
 not the resources billed for every pack. For example:
 
