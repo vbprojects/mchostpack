@@ -1,51 +1,49 @@
-const STATUS_ENDPOINT = "https://mchostpack-urz.fly.dev/api/guest-status";
-const grid = document.getElementById("pack-grid");
+const statusEndpoint = "https://mchostpack-urz.fly.dev/api/guest-status";
+const list = document.getElementById("pack-list");
 const count = document.getElementById("pack-count");
-const button = document.getElementById("check-status");
-const pill = document.getElementById("system-pill");
-const note = document.getElementById("status-note");
-let catalog = [];
-let activeID = "";
+const statusText = document.getElementById("status");
+const statusButton = document.getElementById("check-status");
+let packs = [];
+let activePack = "";
 
 function renderPacks() {
-  if (!catalog.length) {
-    grid.innerHTML = '<div class="empty">No packs are currently listed.</div>';
+  if (!packs.length) {
+    list.innerHTML = '<div class="empty">No modpacks are currently listed.</div>';
     return;
   }
-  grid.replaceChildren(...catalog.map((pack, index) => {
-    const card = document.createElement("article");
-    card.className = "pack-card" + (pack.id === activeID ? " active" : "");
-    card.dataset.index = String(index + 1).padStart(2, "0");
-    const top = document.createElement("div");
-    top.className = "pack-top";
-    const provider = document.createElement("span");
-    provider.className = "pack-provider";
-    provider.textContent = `${pack.provider} · Java ${pack.java}`;
-    const active = document.createElement("span");
-    active.className = "active-tag";
-    active.textContent = "ACTIVE";
-    top.append(provider, active);
-    const title = document.createElement("h3");
-    title.textContent = pack.displayName;
+  list.replaceChildren(...packs.map(pack => {
+    const row = document.createElement("article");
+    row.className = "pack" + (pack.id === activePack ? " active" : "");
+    const details = document.createElement("div");
+    const heading = document.createElement("h3");
+    heading.textContent = pack.displayName;
+    if (pack.id === activePack) {
+      const active = document.createElement("span");
+      active.className = "active-label";
+      active.textContent = "Active";
+      heading.append(active);
+    }
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `${pack.provider} · Java ${pack.java}`;
+    details.append(heading, meta);
     const addressRow = document.createElement("div");
     addressRow.className = "address-row";
-    const address = document.createElement("div");
+    const address = document.createElement("span");
     address.className = "address";
     address.textContent = pack.hostname;
     const copy = document.createElement("button");
     copy.className = "copy";
     copy.type = "button";
-    copy.textContent = "COPY";
+    copy.textContent = "Copy";
     copy.addEventListener("click", async () => {
       await navigator.clipboard.writeText(pack.hostname);
-      copy.textContent = "COPIED";
-      setTimeout(() => { copy.textContent = "COPY"; }, 1400);
+      copy.textContent = "Copied";
+      setTimeout(() => { copy.textContent = "Copy"; }, 1200);
     });
     addressRow.append(address, copy);
-    const body = document.createElement("div");
-    body.append(title, addressRow);
-    card.append(top, body);
-    return card;
+    row.append(details, addressRow);
+    return row;
   }));
 }
 
@@ -53,52 +51,46 @@ async function loadCatalog() {
   try {
     const response = await fetch("catalog.json", {cache: "no-store"});
     if (!response.ok) throw new Error("catalog unavailable");
-    catalog = (await response.json()).packs || [];
-    count.textContent = `${catalog.length} ${catalog.length === 1 ? "pack" : "packs"}`;
+    packs = (await response.json()).packs || [];
+    count.textContent = `${packs.length} ${packs.length === 1 ? "modpack" : "modpacks"}`;
     renderPacks();
   } catch {
     count.textContent = "Unavailable";
-    grid.innerHTML = '<div class="empty">The pack catalog could not be loaded.</div>';
+    list.innerHTML = '<div class="empty">The modpack list could not be loaded.</div>';
   }
 }
 
-function describeStatus(status) {
-  activeID = status.activeId || "";
+function showStatus(status) {
+  activePack = status.activeId || "";
   renderPacks();
-  const phase = status.phase || "IDLE";
-  pill.className = "system-pill";
-  if (phase === "READY") {
-    pill.querySelector("b").textContent = `${status.activeName || activeID} online`;
-    note.textContent = "A Minecraft world is online now.";
-  } else if (phase === "IDLE") {
-    pill.querySelector("b").textContent = "Sleeping";
-    note.textContent = "No world is running. Joining any listed address will wake it.";
-  } else if (phase === "FAILED") {
-    pill.classList.add("failed");
-    pill.querySelector("b").textContent = "Needs attention";
-    note.textContent = "The operator has been notified. No internal error details are public.";
+  statusText.className = "status";
+  if (status.phase === "READY") {
+    statusText.textContent = `${status.activeName || activePack} is online`;
+    statusText.classList.add("ready");
+  } else if (status.phase === "IDLE") {
+    statusText.textContent = "Server is sleeping";
+  } else if (status.phase === "FAILED") {
+    statusText.textContent = "Server needs attention";
+    statusText.classList.add("failed");
   } else {
-    pill.classList.add("busy");
-    pill.querySelector("b").textContent = phase.toLowerCase();
-    note.textContent = status.activeName ? `${status.activeName} is ${phase.toLowerCase()}.` : `The server is ${phase.toLowerCase()}.`;
+    statusText.textContent = `Server is ${(status.phase || "starting").toLowerCase()}`;
+    statusText.classList.add("busy");
   }
 }
 
-button.addEventListener("click", async () => {
-  button.disabled = true;
-  button.textContent = "Waking status…";
-  note.textContent = "Fly may need a few seconds to start the lightweight router.";
+statusButton.addEventListener("click", async () => {
+  statusButton.disabled = true;
+  statusButton.textContent = "Checking…";
   try {
-    const response = await fetch(STATUS_ENDPOINT, {cache: "no-store"});
+    const response = await fetch(statusEndpoint, {cache: "no-store"});
     if (!response.ok) throw new Error("status unavailable");
-    describeStatus(await response.json());
+    showStatus(await response.json());
   } catch {
-    pill.className = "system-pill failed";
-    pill.querySelector("b").textContent = "Status unavailable";
-    note.textContent = "The guest page is online, but live Fly status could not be reached.";
+    statusText.textContent = "Status unavailable";
+    statusText.className = "status failed";
   } finally {
-    button.disabled = false;
-    button.textContent = "Check live status";
+    statusButton.disabled = false;
+    statusButton.textContent = "Check status";
   }
 });
 

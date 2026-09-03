@@ -3,45 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Join the Hostpack Minecraft servers.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mchostpack-urz.fly.dev; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
-  <title>Hostpack — Pick your world</title>
+  <meta name="description" content="Minecraft server addresses and status.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mchostpack-urz.fly.dev; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>Minecraft server</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="grain"></div>
   <main>
-    <nav>
-      <a class="brand" href="./" aria-label="Hostpack home"><span class="cube">H</span> HOSTPACK</a>
-      <div id="system-pill" class="system-pill"><span></span><b>On demand</b></div>
-    </nav>
-
-    <header class="hero">
-      <p class="kicker">ONE SERVER · MANY WORLDS</p>
-      <h1>Choose your<br><em>next adventure.</em></h1>
-      <p class="intro">Pick a pack, copy its address, and join. The server wakes automatically and keeps every world safely separated.</p>
-      <div class="actions">
-        <a class="primary" href="#packs">Browse packs <span>↓</span></a>
-        <button id="check-status" class="secondary" type="button">Check live status</button>
+    <header>
+      <div><h1>Minecraft server</h1><p>Choose a modpack and use its address to connect.</p></div>
+      <div class="status-area">
+        <span id="status" class="status">Status not checked</span>
+        <button id="check-status" type="button">Check status</button>
       </div>
-      <p id="status-note" class="status-note">Checking live status briefly wakes the lightweight Hostpack router—not Minecraft.</p>
     </header>
-
-    <section id="packs" class="packs-section">
-      <div class="section-heading">
-        <div><p class="kicker">AVAILABLE NOW</p><h2>Worlds on the shelf</h2></div>
-        <span id="pack-count">Loading…</span>
-      </div>
-      <div id="pack-grid" class="pack-grid" aria-live="polite"></div>
+    <section aria-labelledby="packs-heading">
+      <div class="section-title"><h2 id="packs-heading">Available modpacks</h2><span id="pack-count">Loading…</span></div>
+      <div id="pack-list" class="pack-list" aria-live="polite"></div>
     </section>
-
-    <section class="how-it-works">
-      <div><span>01</span><h3>Install the pack</h3><p>Use the exact pack and version shown in your launcher.</p></div>
-      <div><span>02</span><h3>Copy the address</h3><p>Each hostname selects its own isolated server and world.</p></div>
-      <div><span>03</span><h3>Join and reconnect</h3><p>A cold server may ask you to reconnect while it wakes or resizes.</p></div>
-    </section>
-
-    <footer><span>HOSTPACK</span><p>Worlds sleep when nobody is playing.</p></footer>
+    <aside>
+      <strong>Connecting</strong>
+      <p>The server starts when somebody joins. On the first attempt, wait for the startup message and reconnect after a few minutes.</p>
+    </aside>
+    <footer>Checking status briefly wakes the router. Minecraft starts only when a player joins.</footer>
   </main>
   <script src="app.js"></script>
 </body>
