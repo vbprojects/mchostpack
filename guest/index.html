@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Minecraft server addresses and status.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mchostpack-urz.fly.dev; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mchostpack-urz.fly.dev https://api.modrinth.com; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
   <title>Minecraft server</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -32,6 +32,19 @@
       <p><strong>CurseForge:</strong> use the numeric project ID and exact file ID from a modpack file URL. CurseForge requires an API key kept by the server owner.</p>
       <p><a href="https://docs.modrinth.com/api/operations/getprojectversions/" target="_blank" rel="noopener noreferrer">Modrinth version API</a> · <a href="https://docs.curseforge.com/rest-api/" target="_blank" rel="noopener noreferrer">CurseForge API</a></p>
     </section>
+    <details class="generator">
+      <summary>Get Modrinth IDs from a pack link</summary>
+      <p>Paste a Modrinth project or pack URL. This runs in your browser and only reads public Modrinth metadata.</p>
+      <form id="modrinth-form">
+        <label for="modrinth-url">Project URL</label>
+        <input id="modrinth-url" type="url" placeholder="https://modrinth.com/modpack/example" required>
+        <button type="submit">Find versions</button>
+      </form>
+      <label for="modrinth-version">Version</label>
+      <select id="modrinth-version" disabled><option>Select a project first</option></select>
+      <pre id="modrinth-output" aria-live="polite"></pre>
+      <p id="modrinth-error" class="error" role="alert"></p>
+    </details>
     <footer>Checking status briefly wakes the router. Minecraft starts only when a player joins.</footer>
   </main>
   <script src="app.js"></script>

@@ -104,3 +104,60 @@ statusButton.addEventListener("click", async () => {
 });
 
 loadCatalog();
+
+const modrinthForm = document.getElementById("modrinth-form");
+const modrinthVersion = document.getElementById("modrinth-version");
+const modrinthOutput = document.getElementById("modrinth-output");
+const modrinthError = document.getElementById("modrinth-error");
+let modrinthProject = null;
+
+function projectSlug(value) {
+  const url = new URL(value);
+  if (url.hostname !== "modrinth.com") throw new Error("Use a modrinth.com project URL.");
+  const parts = url.pathname.split("/").filter(Boolean);
+  if (parts.length < 2 || !["mod", "modpack", "plugin", "resourcepack", "shader"].includes(parts[0])) {
+    throw new Error("Use a Modrinth project or modpack URL.");
+  }
+  return parts[1];
+}
+
+function renderModrinthConfig() {
+  const selected = modrinthVersion.selectedOptions[0];
+  if (!modrinthProject || !selected || !selected.value) {
+    modrinthOutput.textContent = "";
+    return;
+  }
+  modrinthOutput.textContent = `provider: modrinth\nproject_id: ${modrinthProject.id}\nversion_id: ${selected.value}`;
+}
+
+modrinthForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  modrinthError.textContent = "";
+  modrinthOutput.textContent = "Loading…";
+  modrinthVersion.disabled = true;
+  try {
+    const slug = projectSlug(document.getElementById("modrinth-url").value.trim());
+    const projectResponse = await fetch(`https://api.modrinth.com/v2/project/${encodeURIComponent(slug)}`);
+    if (!projectResponse.ok) throw new Error("Modrinth project was not found.");
+    modrinthProject = await projectResponse.json();
+    const versionsResponse = await fetch(`https://api.modrinth.com/v2/project/${encodeURIComponent(modrinthProject.id)}/version`);
+    if (!versionsResponse.ok) throw new Error("Could not load Modrinth versions.");
+    const versions = await versionsResponse.json();
+    modrinthVersion.replaceChildren(...versions.map(version => {
+      const option = document.createElement("option");
+      option.value = version.id;
+      option.textContent = `${version.version_number} (${version.id})`;
+      return option;
+    }));
+    modrinthVersion.disabled = versions.length === 0;
+    if (!versions.length) throw new Error("This project has no published versions.");
+    renderModrinthConfig();
+  } catch (error) {
+    modrinthProject = null;
+    modrinthVersion.replaceChildren(new Option("Select a project first"));
+    modrinthVersion.disabled = true;
+    modrinthOutput.textContent = "";
+    modrinthError.textContent = error.message || "Could not read Modrinth metadata.";
+  }
+});
+modrinthVersion.addEventListener("change", renderModrinthConfig);
