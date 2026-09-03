@@ -5,10 +5,10 @@ runtime:
   startup_wait: 25s
   startup_timeout: 20m
   status_idle_exit: 30s
-  empty_before_switch: 2m
-  idle_before_stop: 10m
+  empty_before_switch: 0m
+  idle_before_stop: 20m
   backend_poll_interval: 10s
-  shutdown_timeout: 2m
+  shutdown_timeout: 5m
   max_connections: 128
   connections_per_minute: 30
   listen_address: ":25565"
