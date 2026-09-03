@@ -13,6 +13,7 @@ type Phase string
 
 const (
 	Idle       Phase = "IDLE"
+	Resizing   Phase = "RESIZING"
 	Loading    Phase = "LOADING"
 	Ready      Phase = "READY"
 	Draining   Phase = "DRAINING"

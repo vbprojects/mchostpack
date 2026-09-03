@@ -68,3 +68,21 @@ if [[ -n "$current_image" && "$current_image" != "$image_ref" ]]; then
 fi
 
 tofu -chdir=infra apply "${apply_args[@]}"
+
+# App secrets remain reported as staged for this raw (non-Fly-Launch)
+# Machine. A no-op Machines API update selects the newest secret bundle while
+# preserving the complete config, including any per-pack guest sizing.
+machine_id=$(tofu -chdir=infra output -raw machine_id)
+machine_state=""
+for _ in $(seq 1 30); do
+  machine_state=$(fly machines list --app "$app_name" --json \
+    | python3 -c 'import json,sys; target=sys.argv[1]; print(next((m.get("state", "") for m in json.load(sys.stdin) if m.get("id") == target), ""))' "$machine_id")
+  [[ "$machine_state" == "stopped" ]] && break
+  sleep 2
+done
+if [[ "$machine_state" != "stopped" ]]; then
+  echo "Machine $machine_id did not reach stopped state; staged secrets were not activated" >&2
+  exit 1
+fi
+echo "Activating the latest staged secrets on stopped Machine $machine_id"
+fly machine update "$machine_id" --app "$app_name" --skip-start --yes >/dev/null

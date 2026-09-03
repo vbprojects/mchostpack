@@ -11,6 +11,12 @@ fly ssh console --app YOUR_UNIQUE_APP --command 'hostpackd backup list'
 
 Logs are structured JSON and include pack, phase, generation, and failure context. Runtime state is stored at `/state/runtime/active.json`; do not edit it while Java is running.
 
+`RESIZING` means Hostpack submitted a Fly Machine CPU/RAM update before Java
+started. The update reboots the VM and recovery continues the requested pack;
+the player should reconnect. If it becomes `FAILED`, confirm
+`HOSTPACK_FLY_API_TOKEN` is present, unexpired, and scoped to this app, then
+run `hostpackd doctor`.
+
 ## Backup failure
 
 A remote-backup failure leaves the instance directory intact and records `backupPending`. The next clean stop recompresses and retries that generation. Investigate credentials, quota, endpoint, or rclone configuration before deleting any local data.

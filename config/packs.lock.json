@@ -1,7 +1,17 @@
 {
   "schema": 1,
-  "configDigest": "f167c8b1c5618786b2a06b0a4c4e3cbb2a093ad9ac390af5fd8d0fd320bee0c3",
+  "configDigest": "b54b04efe84ecbdd0a6eea4b0b06cb76cd726b9e1183b9bf34ce59c0df4b346b",
   "packs": {
+    "cobblemon": {
+      "provider": "modrinth",
+      "projectId": "mHMxXbIu",
+      "versionId": "VJ9Jur2k",
+      "minecraftVersion": "1.21.1",
+      "loader": "neoforge",
+      "java": 21,
+      "artifactHash": "sha512:7a8f9b38c835fc0eab97e1a3c2d98218490215f8eaeb702a44bf55da238545a241578b40cb2f7d616f95c5bba9293b60048ca5995a00a993c424eec85a49bf8c",
+      "identityDigest": "5ba8f68826eb7d3dc51f3351fe73ea728ea165f844308026f7629f7980ee2b7f"
+    },
     "sfs": {
       "provider": "modrinth",
       "projectId": "r5ygbOIe",

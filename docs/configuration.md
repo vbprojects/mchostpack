@@ -12,7 +12,9 @@ packs:
     project_id: PROJECT_ID
     version_id: EXACT_VERSION_ID
     java: 21
-    memory_mb: 8192
+    memory_mb: 6144
+    machine_memory_mb: 8192
+    machine_cpus: 4
 
   example-curseforge:
     display_name: Example CurseForge Pack
@@ -20,10 +22,31 @@ packs:
     project_id: "123456"
     file_id: 7654321
     java: 17
-    memory_mb: 10240
+    memory_mb: 3072
+    machine_memory_mb: 4096
+    machine_cpus: 2
 ```
 
 IDs must be lowercase DNS labels. `example-modrinth` maps only to `example-modrinth.<domain>`. Provider, project, exact version/file, and Java become immutable when locked. A new version or second world needs a new ID.
+
+`memory_mb` is the Java heap and is passed to the upstream image as `MEMORY`,
+which sets both `-Xms` and `-Xmx`. `machine_memory_mb` and `machine_cpus` are
+the Fly guest resources selected before that pack starts. Machine memory must
+be a multiple of 256 MB and leave at least 256 MB outside the heap. In
+practice, approximately 25% non-heap headroom is recommended.
+
+The global `capacity.memory_mb` and `capacity.cpus` values are safety ceilings,
+not the resources billed for every pack. For example:
+
+```yaml
+capacity:
+  memory_mb: 8192
+  cpus: 4
+```
+
+On Fly, a request for a differently sized pack persists `RESIZING`, updates
+the same Machine through the Machines API, and asks the player to reconnect.
+The attached volume is unchanged. Local development skips Fly resizing.
 
 Run `hostpackd lock` after additions. Modrinth metadata is resolved through its public API; CurseForge requires `CF_API_KEY`. The command verifies the file belongs to the configured project and records its provider checksum and loader metadata.
 
@@ -77,4 +100,5 @@ Every backend stores an archive followed by a manifest. A generation is ignored 
 - The Machine saves and exits after ten empty minutes.
 - Backend status failures are treated as an occupied server.
 
-The configured Machine memory must be at least the largest pack memory. Leave volume headroom for installation downloads, world growth, and atomic restore staging.
+The configured capacity ceilings must cover every pack. Leave volume headroom
+for installation downloads, world growth, and atomic restore staging.

@@ -50,6 +50,7 @@ type Runtime struct {
 
 type Capacity struct {
 	MemoryMB int `yaml:"memory_mb" json:"memoryMb"`
+	CPUs     int `yaml:"cpus" json:"cpus"`
 }
 
 type StorageConfig struct {
@@ -74,13 +75,15 @@ type RcloneConfig struct {
 }
 
 type Pack struct {
-	DisplayName string `yaml:"display_name" json:"displayName"`
-	Provider    string `yaml:"provider" json:"provider"`
-	ProjectID   string `yaml:"project_id" json:"projectId"`
-	VersionID   string `yaml:"version_id,omitempty" json:"versionId,omitempty"`
-	FileID      int64  `yaml:"file_id,omitempty" json:"fileId,omitempty"`
-	Java        int    `yaml:"java" json:"java"`
-	MemoryMB    int    `yaml:"memory_mb" json:"memoryMb"`
+	DisplayName     string `yaml:"display_name" json:"displayName"`
+	Provider        string `yaml:"provider" json:"provider"`
+	ProjectID       string `yaml:"project_id" json:"projectId"`
+	VersionID       string `yaml:"version_id,omitempty" json:"versionId,omitempty"`
+	FileID          int64  `yaml:"file_id,omitempty" json:"fileId,omitempty"`
+	Java            int    `yaml:"java" json:"java"`
+	MemoryMB        int    `yaml:"memory_mb" json:"memoryMb"`
+	MachineMemoryMB int    `yaml:"machine_memory_mb" json:"machineMemoryMb"`
+	MachineCPUs     int    `yaml:"machine_cpus" json:"machineCpus"`
 }
 
 var dnsLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
@@ -120,6 +123,9 @@ func (c *Config) Validate() error {
 	if c.Capacity.MemoryMB <= 0 {
 		problems = append(problems, "capacity.memory_mb must be positive")
 	}
+	if c.Capacity.CPUs <= 0 {
+		problems = append(problems, "capacity.cpus must be positive")
+	}
 	if c.Runtime.StartupWait.Duration <= 0 || c.Runtime.StatusIdleExit.Duration <= 0 || c.Runtime.EmptyBeforeSwitch.Duration <= 0 || c.Runtime.IdleBeforeStop.Duration <= 0 || c.Runtime.BackendPollInterval.Duration <= 0 || c.Runtime.ShutdownTimeout.Duration <= 0 {
 		problems = append(problems, "all runtime durations must be positive")
 	}
@@ -158,8 +164,17 @@ func (c *Config) Validate() error {
 		if pack.Java != 17 && pack.Java != 21 {
 			problems = append(problems, fmt.Sprintf("pack %q java must be 17 or 21", id))
 		}
-		if pack.MemoryMB <= 0 || pack.MemoryMB > c.Capacity.MemoryMB {
-			problems = append(problems, fmt.Sprintf("pack %q memory_mb must fit capacity", id))
+		if pack.MemoryMB <= 0 {
+			problems = append(problems, fmt.Sprintf("pack %q memory_mb must be positive", id))
+		}
+		if pack.MachineMemoryMB <= 0 || pack.MachineMemoryMB > c.Capacity.MemoryMB || pack.MachineMemoryMB%256 != 0 {
+			problems = append(problems, fmt.Sprintf("pack %q machine_memory_mb must be a multiple of 256 that fits capacity", id))
+		}
+		if pack.MemoryMB+256 > pack.MachineMemoryMB {
+			problems = append(problems, fmt.Sprintf("pack %q machine_memory_mb must leave at least 256 MB outside the Java heap", id))
+		}
+		if pack.MachineCPUs <= 0 || pack.MachineCPUs > c.Capacity.CPUs {
+			problems = append(problems, fmt.Sprintf("pack %q machine_cpus must fit capacity", id))
 		}
 		switch pack.Provider {
 		case "modrinth":

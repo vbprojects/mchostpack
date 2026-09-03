@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hostpack/hostpack/internal/config"
+	"github.com/hostpack/hostpack/internal/flymachine"
 	"github.com/hostpack/hostpack/internal/router"
 	hpruntime "github.com/hostpack/hostpack/internal/runtime"
 	"github.com/hostpack/hostpack/internal/store"
@@ -167,7 +168,11 @@ func serve(args []string) error {
 		return err
 	}
 	launcher := &hpruntime.ItzgLauncher{StateRoot: c.stateRoot, DataLink: "/data", StartCommand: envDefault("HOSTPACK_START_COMMAND", "/start"), RCONPassword: os.Getenv("RCON_PASSWORD"), Logger: logger}
-	manager := hpruntime.NewManager(cfg, lock, st, launcher, c.stateRoot, logger)
+	sizer, err := flymachine.FromEnv()
+	if err != nil {
+		return err
+	}
+	manager := hpruntime.NewManager(cfg, lock, st, launcher, sizer, c.stateRoot, logger)
 	defer manager.Close()
 	ln, err := net.Listen("tcp", cfg.Runtime.ListenAddress)
 	if err != nil {
@@ -260,6 +265,16 @@ func doctor(args []string) error {
 		name string
 		err  error
 	}{"backup store", storeErr})
+	flySizer, flyErr := flymachine.FromEnv()
+	if flyErr == nil && flySizer != nil {
+		checkCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		flyErr = flySizer.Check(checkCtx)
+		cancel()
+	}
+	checks = append(checks, struct {
+		name string
+		err  error
+	}{"Fly resize API", flyErr})
 	failed := false
 	for _, check := range checks {
 		if check.err != nil {

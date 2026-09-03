@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"syscall"
 
 	"github.com/hostpack/hostpack/internal/config"
 )
@@ -49,7 +51,21 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 	}
 	cmd := exec.CommandContext(ctx, start)
 	cmd.Dir = l.DataLink
-	env := append([]string{}, os.Environ()...)
+	uid, err := childID("HOSTPACK_MINECRAFT_UID", 1000)
+	if err != nil {
+		return nil, err
+	}
+	gid, err := childID("HOSTPACK_MINECRAFT_GID", 1000)
+	if err != nil {
+		return nil, err
+	}
+	for _, root := range []string{filepath.Dir(instance), instance} {
+		if err := ensureTreeOwner(root, uid, gid); err != nil {
+			return nil, err
+		}
+	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, NoSetGroups: true}}
+	env := childEnvironment(os.Environ())
 	env = append(env, "EULA=TRUE", "SERVER_IP=127.0.0.1", "SERVER_PORT=25566", "ENABLE_STATUS=TRUE", "ONLINE_MODE=TRUE", "ENABLE_RCON=TRUE", "RCON_PORT=25575", "RCON_PASSWORD="+l.RCONPassword, "MEMORY="+strconv.Itoa(p.MemoryMB)+"M", "SKIP_CHOWN_DATA=TRUE")
 	if p.Java == 17 {
 		env = append(env, "PATH=/opt/java17/bin:"+os.Getenv("PATH"), "JAVA_HOME=/opt/java17")
@@ -68,6 +84,57 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 		return nil, fmt.Errorf("start minecraft: %w", err)
 	}
 	return &commandProcess{cmd: cmd}, nil
+}
+
+func ensureTreeOwner(root string, uid, gid uint32) error {
+	info, err := os.Stat(root)
+	if err != nil {
+		return err
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok && stat.Uid == uid && stat.Gid == gid {
+		return nil
+	}
+	if err := filepath.WalkDir(root, func(path string, _ os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		return os.Lchown(path, int(uid), int(gid))
+	}); err != nil {
+		return fmt.Errorf("set Minecraft instance ownership: %w", err)
+	}
+	return nil
+}
+
+func childID(name string, fallback uint64) (uint32, error) {
+	value := os.Getenv(name)
+	if value == "" {
+		value = strconv.FormatUint(fallback, 10)
+	}
+	id, err := strconv.ParseUint(value, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a numeric user or group ID: %w", name, err)
+	}
+	return uint32(id), nil
+}
+
+func childEnvironment(parent []string) []string {
+	blocked := map[string]bool{
+		"AWS_ACCESS_KEY_ID":      true,
+		"AWS_SECRET_ACCESS_KEY":  true,
+		"AWS_SESSION_TOKEN":      true,
+		"FLY_API_TOKEN":          true,
+		"FLY_TOKEN":              true,
+		"HOSTPACK_FLY_API_TOKEN": true,
+	}
+	result := make([]string, 0, len(parent))
+	for _, entry := range parent {
+		name, _, _ := strings.Cut(entry, "=")
+		if blocked[name] || strings.HasPrefix(name, "RCLONE_CONFIG_") {
+			continue
+		}
+		result = append(result, entry)
+	}
+	return result
 }
 
 type commandProcess struct{ cmd *exec.Cmd }

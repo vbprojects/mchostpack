@@ -25,13 +25,13 @@ variable "image_ref" {
 }
 
 variable "cpus" {
-  description = "Shared CPU count for the inexpensive MVP test machine."
+  description = "Bootstrap shared CPU count for a new or replaced Machine. Hostpack resizes it per pack."
   type        = number
   default     = 2
 }
 
 variable "memory_mb" {
-  description = "Guest memory for the lightweight Modrinth test pack."
+  description = "Bootstrap guest memory for a new or replaced Machine. Hostpack resizes it per pack."
   type        = number
   default     = 2048
 }

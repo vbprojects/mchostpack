@@ -32,15 +32,22 @@ resource "fly_machine" "hostpack" {
   auto_destroy   = false
 
   env = {
-    HOSTPACK_CONFIG = "/app/config/packs.yaml"
-    HOSTPACK_LOCK   = "/app/config/packs.lock.json"
-    HOSTPACK_STATE  = "/state"
+    HOSTPACK_CONFIG  = "/app/config/packs.yaml"
+    HOSTPACK_LOCK    = "/app/config/packs.lock.json"
+    HOSTPACK_STATE   = "/state"
+    HOSTPACK_FLY_APP = fly_app.hostpack.name
   }
 
   guest {
     cpu_kind  = "shared"
     cpus      = var.cpus
     memory_mb = var.memory_mb
+  }
+
+  lifecycle {
+    # hostpackd changes these fields before launching each pack. OpenTofu owns
+    # the bootstrap size used by replacement Machines, not the live size.
+    ignore_changes = [guest]
   }
 
   mount {

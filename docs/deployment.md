@@ -27,15 +27,36 @@ Set secrets separately so their values do not enter OpenTofu state:
 ```bash
 fly secrets set --stage --app YOUR_UNIQUE_APP \
   RCON_PASSWORD='LONG_RANDOM_VALUE' \
+  HOSTPACK_FLY_API_TOKEN='APP_SCOPED_DEPLOY_TOKEN' \
   CF_API_KEY='CURSEFORGE_KEY' \
   AWS_ACCESS_KEY_ID='BACKUP_KEY' \
   AWS_SECRET_ACCESS_KEY='BACKUP_SECRET'
 ```
 
+Create the resize token with a finite expiry and pipe it directly into the
+secret command so it is not saved in shell history:
+
+```bash
+# Use the owner-authenticated flyctl session, not a limited provisioning token
+# that might be loaded from .env.
+unset FLY_API_TOKEN FLY_TOKEN
+resize_token="$(fly tokens create deploy --app YOUR_UNIQUE_APP --expiry 8760h)"
+printf 'HOSTPACK_FLY_API_TOKEN=%s\n' "$resize_token" \
+  | fly secrets import --stage --app YOUR_UNIQUE_APP
+unset resize_token
+```
+
+The token can manage only this Fly app, but it is still sensitive: Hostpack
+uses it to read the current Machine config and update only the shared CPU and
+memory fields before Java starts. The supervisor runs separately from the
+unprivileged Minecraft child and removes this token and backup credentials
+from the child's environment. Rotate it before expiry.
+
 Only set the variables required by the selected storage driver. For rclone, use its supported `RCLONE_CONFIG_*` secret environment variables or a secret-backed configuration path.
 `--stage` is required because Hostpack provisions a raw Fly Machine rather
-than a Fly Launch release. A staged secret is injected the next time the
-stopped Machine starts.
+than a Fly Launch release. The deployment script performs a no-op update of
+the stopped Machine after OpenTofu completes, which activates the newest
+secret bundle without exposing values or changing its dynamic guest size.
 
 Create this DNS record using the `dedicated_ipv4` output:
 
@@ -74,6 +95,13 @@ When an image digest changes, the script replaces only the stopped Machine and
 reattaches the existing volume. This works around a lease-handling defect in
 `stategraph/fly` 0.2.4's in-place Machine update path. The application,
 dedicated IPv4, and volume are not replaced.
+
+The OpenTofu Machine resource deliberately ignores later `guest` drift.
+`cpus` and `memory_mb` in `infra/variables.tf` are only the bootstrap size for
+a replacement Machine. Each pack's `machine_cpus` and `machine_memory_mb`
+become authoritative when that pack is requested. Resizing reboots the VM, so
+the first connection after selecting a differently sized pack receives a
+reconnect message.
 
 It refuses to update an active Machine. Do not use `HOSTPACK_FORCE_DEPLOY=1` while players are connected; it bypasses the clean-save protection.
 

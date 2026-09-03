@@ -14,7 +14,8 @@ runtime:
   backend_address: "127.0.0.1:25566"
 
 capacity:
-  memory_mb: 2048
+  memory_mb: 8192
+  cpus: 4
 
 storage:
   driver: s3
@@ -33,3 +34,14 @@ packs:
     version_id: FCnyrYJ4
     java: 21
     memory_mb: 1536
+    machine_memory_mb: 2048
+    machine_cpus: 2
+  cobblemon:
+    display_name: Cobblemon Official NeoForge 1.7.3
+    provider: modrinth
+    project_id: mHMxXbIu
+    version_id: VJ9Jur2k
+    java: 21
+    memory_mb: 3072
+    machine_memory_mb: 4096
+    machine_cpus: 2

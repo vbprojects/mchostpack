@@ -22,6 +22,7 @@ type Manager struct {
 	lock         *config.LockFile
 	store        store.Store
 	launcher     Launcher
+	sizer        ResourceSizer
 	stateFile    *StateFile
 	stateRoot    string
 	rcon         rcon.Client
@@ -38,9 +39,13 @@ type Manager struct {
 	cancel       context.CancelFunc
 }
 
-func NewManager(cfg *config.Config, lock *config.LockFile, st store.Store, launcher Launcher, stateRoot string, logger *slog.Logger) *Manager {
+type ResourceSizer interface {
+	Ensure(context.Context, config.Pack) (bool, error)
+}
+
+func NewManager(cfg *config.Config, lock *config.LockFile, st store.Store, launcher Launcher, sizer ResourceSizer, stateRoot string, logger *slog.Logger) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	m := &Manager{cfg: cfg, lock: lock, store: st, launcher: launcher, stateFile: NewStateFile(filepath.Join(stateRoot, "runtime", "active.json")), stateRoot: stateRoot, rcon: rcon.Client{Address: "127.0.0.1:25575", Password: os.Getenv("RCON_PASSWORD")}, log: logger, started: time.Now(), done: make(chan struct{}), ctx: ctx, cancel: cancel}
+	m := &Manager{cfg: cfg, lock: lock, store: st, launcher: launcher, sizer: sizer, stateFile: NewStateFile(filepath.Join(stateRoot, "runtime", "active.json")), stateRoot: stateRoot, rcon: rcon.Client{Address: "127.0.0.1:25575", Password: os.Getenv("RCON_PASSWORD")}, log: logger, started: time.Now(), done: make(chan struct{}), ctx: ctx, cancel: cancel}
 	m.state, _ = m.stateFile.Load()
 	if m.state.Phase != Idle && m.state.ActiveID != "" {
 		m.state.Phase = Recovering
@@ -102,6 +107,9 @@ func (m *Manager) waitReady(id string) (bool, string) {
 		if active == id && phase == Ready {
 			return true, ""
 		}
+		if active == id && phase == Resizing {
+			return false, m.cfg.Packs[id].DisplayName + " is resizing its Fly Machine. Please reconnect shortly."
+		}
 		if phase == Failed {
 			return false, "Failed to start " + m.cfg.Packs[id].DisplayName + ": " + errText
 		}
@@ -113,6 +121,37 @@ func (m *Manager) start(id string, recovery bool) {
 	if !ok {
 		m.fail(id, fmt.Errorf("pack removed from config"))
 		return
+	}
+	if m.sizer != nil {
+		m.mu.Lock()
+		if m.state.ActiveID != id {
+			m.mu.Unlock()
+			return
+		}
+		m.state.Phase = Resizing
+		_ = m.stateFile.Save(m.state)
+		m.mu.Unlock()
+		changed, resizeErr := m.sizer.Ensure(m.ctx, p)
+		if resizeErr != nil {
+			m.fail(id, fmt.Errorf("resize Fly Machine: %w", resizeErr))
+			return
+		}
+		if changed {
+			m.log.Info("Fly Machine resize submitted", "pack", id, "memory_mb", p.MachineMemoryMB, "cpus", p.MachineCPUs)
+			return
+		}
+		m.mu.Lock()
+		if m.state.ActiveID != id {
+			m.mu.Unlock()
+			return
+		}
+		if recovery {
+			m.state.Phase = Recovering
+		} else {
+			m.state.Phase = Loading
+		}
+		_ = m.stateFile.Save(m.state)
+		m.mu.Unlock()
 	}
 	instanceRoot := filepath.Join(m.stateRoot, "instances", id)
 	dir := filepath.Join(instanceRoot, "server")

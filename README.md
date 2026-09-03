@@ -9,6 +9,7 @@ This repository is an MVP intended for a small, operator-managed deployment. It 
 - Exact hostname routing for Minecraft status and login handshakes.
 - Synthetic sleeping, loading, busy, and failure status without starting Java.
 - Persisted singleton lifecycle with crash recovery and concurrent-start protection.
+- Per-pack Fly Machine RAM/CPU sizing before Java starts.
 - Modrinth and CurseForge exact-version locking.
 - Java 17/21 selection over the `itzg/minecraft-server` installer and launcher.
 - RCON `save-all flush` and clean stop before switching or exiting.
@@ -56,6 +57,9 @@ CurseForge lock generation requires `CF_API_KEY`. Never commit `.env`, rclone co
 - A single Fly Volume is a single-host primary copy. Configure S3 or rclone for independent backups before using valuable worlds.
 - Pack IDs cannot be changed or removed. Add a new ID for a new pack version or world.
 - Packs requiring manual browser downloads are unsupported by the unattended MVP.
+- Per-pack resizing requires an app-scoped Fly deploy token in the
+  `HOSTPACK_FLY_API_TOKEN` app secret. A resize reboots the Machine, so the
+  triggering player must reconnect.
 - The default image arguments use upstream tags for developer convenience. Production CI should pass immutable image digests for all three base images.
 
 See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and [operations](docs/operations.md) before exposing a server.

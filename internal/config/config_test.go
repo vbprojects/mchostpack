@@ -6,7 +6,7 @@ import (
 )
 
 func validConfig() *Config {
-	return &Config{Schema: 1, Domain: "mc.example.com", Runtime: Runtime{StartupWait: Duration{time.Second}, StatusIdleExit: Duration{time.Second}, EmptyBeforeSwitch: Duration{time.Second}, IdleBeforeStop: Duration{time.Second}, BackendPollInterval: Duration{time.Second}, ShutdownTimeout: Duration{time.Second}, MaxConnections: 2, ConnectionsPerMinute: 3, ListenAddress: ":1", BackendAddress: "127.0.0.1:2"}, Capacity: Capacity{MemoryMB: 4096}, Storage: StorageConfig{Driver: "filesystem", Filesystem: FilesystemConfig{Root: "/tmp/b"}}, Packs: map[string]Pack{"alpha": {DisplayName: "Alpha", Provider: "modrinth", ProjectID: "p", VersionID: "v", Java: 17, MemoryMB: 2048}}}
+	return &Config{Schema: 1, Domain: "mc.example.com", Runtime: Runtime{StartupWait: Duration{time.Second}, StatusIdleExit: Duration{time.Second}, EmptyBeforeSwitch: Duration{time.Second}, IdleBeforeStop: Duration{time.Second}, BackendPollInterval: Duration{time.Second}, ShutdownTimeout: Duration{time.Second}, MaxConnections: 2, ConnectionsPerMinute: 3, ListenAddress: ":1", BackendAddress: "127.0.0.1:2"}, Capacity: Capacity{MemoryMB: 4096, CPUs: 4}, Storage: StorageConfig{Driver: "filesystem", Filesystem: FilesystemConfig{Root: "/tmp/b"}}, Packs: map[string]Pack{"alpha": {DisplayName: "Alpha", Provider: "modrinth", ProjectID: "p", VersionID: "v", Java: 17, MemoryMB: 2048, MachineMemoryMB: 3072, MachineCPUs: 2}}}
 }
 
 func TestPackForHost(t *testing.T) {
@@ -37,6 +37,27 @@ func TestFilesystemStorageCannotEvictSource(t *testing.T) {
 		t.Fatal("allowed eviction with filesystem backup storage")
 	}
 }
+
+func TestPackMachineResourcesMustFitCapacity(t *testing.T) {
+	c := validConfig()
+	p := c.Packs["alpha"]
+	p.MachineMemoryMB = 4352
+	p.MachineCPUs = 5
+	c.Packs["alpha"] = p
+	if err := c.Validate(); err == nil {
+		t.Fatal("allowed pack resources above configured capacity")
+	}
+}
+
+func TestPackMachineMemoryLeavesNonHeapHeadroom(t *testing.T) {
+	c := validConfig()
+	p := c.Packs["alpha"]
+	p.MachineMemoryMB = p.MemoryMB
+	c.Packs["alpha"] = p
+	if err := c.Validate(); err == nil {
+		t.Fatal("allowed Java heap to consume the entire Machine memory")
+	}
+}
 func TestLockMatch(t *testing.T) {
 	c := validConfig()
 	_ = c.Validate()
@@ -61,5 +82,16 @@ func TestImmutableLock(t *testing.T) {
 	p.VersionID = "new"
 	if err := CheckImmutable(old, &LockFile{Packs: map[string]LockedPack{"alpha": {IdentityDigest: packIdentityDigest(p)}}}); err == nil {
 		t.Fatal("allowed identity change")
+	}
+}
+
+func TestPackResourcesDoNotChangeWorldIdentity(t *testing.T) {
+	p := validConfig().Packs["alpha"]
+	before := packIdentityDigest(p)
+	p.MemoryMB = 1024
+	p.MachineMemoryMB = 2048
+	p.MachineCPUs = 1
+	if after := packIdentityDigest(p); after != before {
+		t.Fatalf("resource tuning changed immutable world identity: %s != %s", after, before)
 	}
 }
