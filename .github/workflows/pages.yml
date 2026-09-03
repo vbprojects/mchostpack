@@ -25,7 +25,7 @@ jobs:
           cache: true
       - name: Generate public pack catalog
         run: go run ./cmd/hostpackd guest export --config config/packs.yaml --output guest/catalog.json
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v4
         with:
           path: guest
