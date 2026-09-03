@@ -46,11 +46,10 @@ type Backend interface {
 type ArchiveStore struct {
 	backend    Backend
 	lockDigest func(string) string
-	tempRoot   string
 }
 
-func New(backend Backend, tempRoot string, lockDigest func(string) string) *ArchiveStore {
-	return &ArchiveStore{backend: backend, tempRoot: tempRoot, lockDigest: lockDigest}
+func New(backend Backend, _ string, lockDigest func(string) string) *ArchiveStore {
+	return &ArchiveStore{backend: backend, lockDigest: lockDigest}
 }
 
 func (s *ArchiveStore) Head(ctx context.Context, id string) (Manifest, bool, error) {
@@ -98,21 +97,56 @@ func (s *ArchiveStore) Commit(ctx context.Context, id, source string, expected u
 	if (ok && head.Generation != expected) || (!ok && expected != 0) {
 		return Manifest{}, ErrGenerationConflict
 	}
-	if err := os.MkdirAll(s.tempRoot, 0o700); err != nil {
-		return Manifest{}, err
-	}
-	f, err := os.CreateTemp(s.tempRoot, "hostpack-*.tar.zst")
-	if err != nil {
-		return Manifest{}, err
-	}
-	tmp := f.Name()
-	defer os.Remove(tmp)
+	gen := expected + 1
+	archiveKey := fmt.Sprintf("%s/saves/%020d.tar.zst", id, gen)
+	reader, writer := io.Pipe()
 	h := sha256.New()
 	count := &countWriter{}
-	zw, err := zstd.NewWriter(io.MultiWriter(f, h, count))
+	archiveDone := make(chan error, 1)
+	go func() {
+		archiveErr := writeArchive(source, io.MultiWriter(writer, h, count))
+		_ = writer.CloseWithError(archiveErr)
+		archiveDone <- archiveErr
+	}()
+	uploadErr := s.backend.Put(ctx, archiveKey, reader, -1)
+	if uploadErr != nil {
+		_ = reader.CloseWithError(uploadErr)
+	} else {
+		_ = reader.Close()
+	}
+	archiveErr := <-archiveDone
+	if archiveErr != nil {
+		return Manifest{}, fmt.Errorf("create backup archive: %w", archiveErr)
+	}
+	if uploadErr != nil {
+		return Manifest{}, fmt.Errorf("upload backup archive: %w", uploadErr)
+	}
+	m := Manifest{ID: id, Generation: gen, SHA256: hex.EncodeToString(h.Sum(nil)), Size: count.n, CreatedAt: time.Now().UTC()}
+	if s.lockDigest != nil {
+		m.PackLockDigest = s.lockDigest(id)
+	}
+	mb, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
-		f.Close()
 		return Manifest{}, err
+	}
+	manifestKey := fmt.Sprintf("%s/saves/%020d.json", id, gen)
+	if err = s.backend.Put(ctx, manifestKey, strings.NewReader(string(mb)), int64(len(mb))); err != nil {
+		return Manifest{}, err
+	}
+	verified, complete, err := s.Head(ctx, id)
+	if err != nil {
+		return Manifest{}, fmt.Errorf("verify backup generation: %w", err)
+	}
+	if !complete || verified.Generation != m.Generation || verified.SHA256 != m.SHA256 || verified.Size != m.Size {
+		return Manifest{}, fmt.Errorf("backup generation %d could not be verified", m.Generation)
+	}
+	return verified, nil
+}
+
+func writeArchive(source string, destination io.Writer) error {
+	zw, err := zstd.NewWriter(destination)
+	if err != nil {
+		return err
 	}
 	tw := tar.NewWriter(zw)
 	err = filepath.WalkDir(source, func(path string, d fs.DirEntry, walkErr error) error {
@@ -161,33 +195,7 @@ func (s *ArchiveStore) Commit(ctx context.Context, id, source string, expected u
 	if closeErr := zw.Close(); err == nil {
 		err = closeErr
 	}
-	if closeErr := f.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		return Manifest{}, err
-	}
-	gen := expected + 1
-	m := Manifest{ID: id, Generation: gen, SHA256: hex.EncodeToString(h.Sum(nil)), Size: count.n, CreatedAt: time.Now().UTC()}
-	if s.lockDigest != nil {
-		m.PackLockDigest = s.lockDigest(id)
-	}
-	af, err := os.Open(tmp)
-	if err != nil {
-		return Manifest{}, err
-	}
-	archiveKey := fmt.Sprintf("%s/saves/%020d.tar.zst", id, gen)
-	err = s.backend.Put(ctx, archiveKey, af, count.n)
-	_ = af.Close()
-	if err != nil {
-		return Manifest{}, err
-	}
-	mb, _ := json.MarshalIndent(m, "", "  ")
-	manifestKey := fmt.Sprintf("%s/saves/%020d.json", id, gen)
-	if err = s.backend.Put(ctx, manifestKey, strings.NewReader(string(mb)), int64(len(mb))); err != nil {
-		return Manifest{}, err
-	}
-	return m, nil
+	return err
 }
 
 func (s *ArchiveStore) Restore(ctx context.Context, id, destination string) (Manifest, error) {

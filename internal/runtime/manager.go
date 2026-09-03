@@ -274,16 +274,25 @@ func (m *Manager) stopAndBackup() error {
 	m.mu.Unlock()
 	manifest, err := m.store.Commit(context.Background(), id, filepath.Join(m.stateRoot, "instances", id, "server"), generation)
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if err != nil {
 		m.state.BackupPending = true
 		m.state.LastError = "backup pending: " + err.Error()
 		_ = m.stateFile.Save(m.state)
+		m.mu.Unlock()
 		return fmt.Errorf("backup: %w", err)
 	}
 	m.state.Generation = manifest.Generation
 	m.state.BackupPending = false
+	m.state.LastError = ""
 	_ = m.stateFile.Save(m.state)
+	m.mu.Unlock()
+	if m.cfg.Storage.EvictAfterBackup {
+		serverDir := filepath.Join(m.stateRoot, "instances", id, "server")
+		if err := os.RemoveAll(serverDir); err != nil {
+			return fmt.Errorf("evict verified local pack %q: %w", id, err)
+		}
+		m.log.Info("evicted verified local pack", "pack", id, "generation", manifest.Generation)
+	}
 	return nil
 }
 

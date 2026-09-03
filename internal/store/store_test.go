@@ -3,10 +3,21 @@ package store
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+type streamingBackend struct {
+	*Filesystem
+	sizes []int64
+}
+
+func (b *streamingBackend) Put(ctx context.Context, key string, r io.Reader, size int64) error {
+	b.sizes = append(b.sizes, size)
+	return b.Filesystem.Put(ctx, key, r, size)
+}
 
 func TestFilesystemContract(t *testing.T) {
 	ctx := context.Background()
@@ -45,5 +56,27 @@ func TestFilesystemRejectsEscape(t *testing.T) {
 	f := NewFilesystem(t.TempDir())
 	if _, err := f.path("../escape"); err == nil {
 		t.Fatal("accepted escape")
+	}
+}
+
+func TestCommitStreamsArchiveWithoutLocalStaging(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	if err := os.MkdirAll(source, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "level.dat"), []byte("world"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	backend := &streamingBackend{Filesystem: NewFilesystem(filepath.Join(root, "remote"))}
+	s := New(backend, filepath.Join(root, "unused-temp"), nil)
+	if _, err := s.Commit(context.Background(), "pack", source, 0); err != nil {
+		t.Fatal(err)
+	}
+	if len(backend.sizes) < 2 || backend.sizes[0] != -1 {
+		t.Fatalf("archive was not streamed with unknown size: %v", backend.sizes)
+	}
+	if _, err := os.Stat(filepath.Join(root, "unused-temp")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("temporary archive directory was created: %v", err)
 	}
 }

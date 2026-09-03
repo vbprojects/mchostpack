@@ -13,6 +13,7 @@ This repository is an MVP intended for a small, operator-managed deployment. It 
 - Java 17/21 selection over the `itzg/minecraft-server` installer and launcher.
 - RCON `save-all flush` and clean stop before switching or exiting.
 - Immutable generation backups through filesystem, S3-compatible, or rclone storage.
+- Optional verified remote eviction keeps at most one complete pack on the volume.
 - OpenTofu provisioning for one Fly app, dedicated IPv4, volume, and stopped Machine.
 - Manual, digest-pinned deployment guarded against replacing an active Machine.
 

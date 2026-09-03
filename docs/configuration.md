@@ -43,12 +43,20 @@ S3-compatible storage reads credentials from the standard `AWS_ACCESS_KEY_ID`, `
 ```yaml
 storage:
   driver: s3
+  evict_after_backup: true
   s3:
     endpoint: https://t3.storage.dev
     region: auto
     bucket: my-hostpack-backups
     prefix: worlds
 ```
+
+With `evict_after_backup: true`, Hostpack streams the compressed archive to
+the remote backend, uploads the manifest last, reads the generation back to
+verify its size and SHA-256, and only then removes the stopped pack's local
+`server` directory. This keeps at most one complete pack on the Fly Volume
+during a switch. The option is rejected for filesystem storage because that
+would place the only remaining copy on the same volume.
 
 Rclone reads its normal environment or configuration file. The remote includes its target directory:
 
@@ -59,7 +67,7 @@ storage:
     remote: gdrive:hostpack/worlds
 ```
 
-Every backend stores an archive followed by a manifest. A generation is ignored unless both objects exist and the archive size and SHA-256 match its manifest.
+Every backend stores an archive followed by a manifest. A generation is ignored unless both objects exist and the archive size and SHA-256 match its manifest. Archives are streamed during backup, so no second full-size temporary archive is created on the Fly Volume.
 
 ## Runtime defaults
 
@@ -69,4 +77,4 @@ Every backend stores an archive followed by a manifest. A generation is ignored 
 - The Machine saves and exits after ten empty minutes.
 - Backend status failures are treated as an occupied server.
 
-The configured Machine memory must be at least the largest pack memory. Leave extra volume capacity for one compressed backup and installation downloads.
+The configured Machine memory must be at least the largest pack memory. Leave volume headroom for installation downloads, world growth, and atomic restore staging.

@@ -29,6 +29,14 @@ func TestValidation(t *testing.T) {
 		t.Fatal("expected invalid DNS label")
 	}
 }
+
+func TestFilesystemStorageCannotEvictSource(t *testing.T) {
+	c := validConfig()
+	c.Storage.EvictAfterBackup = true
+	if err := c.Validate(); err == nil {
+		t.Fatal("allowed eviction with filesystem backup storage")
+	}
+}
 func TestLockMatch(t *testing.T) {
 	c := validConfig()
 	_ = c.Validate()

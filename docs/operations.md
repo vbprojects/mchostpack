@@ -15,6 +15,12 @@ Logs are structured JSON and include pack, phase, generation, and failure contex
 
 A remote-backup failure leaves the instance directory intact and records `backupPending`. The next clean stop recompresses and retries that generation. Investigate credentials, quota, endpoint, or rclone configuration before deleting any local data.
 
+When `storage.evict_after_backup` is enabled, successful remote backups are
+read back and checksum-verified before local eviction. On the next request,
+Hostpack restores the missing server directory from the highest complete
+generation. Expect a longer cold start and a reconnect message while that
+download completes.
+
 ## Restore after volume loss
 
 Provision a replacement volume of equal or greater size, attach it to the singleton Machine, set the same backup credentials, and run:

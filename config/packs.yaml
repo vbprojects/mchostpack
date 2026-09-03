@@ -17,9 +17,13 @@ capacity:
   memory_mb: 2048
 
 storage:
-  driver: filesystem
-  filesystem:
-    root: /state/backups
+  driver: s3
+  evict_after_backup: true
+  s3:
+    endpoint: https://fly.storage.tigris.dev
+    region: auto
+    bucket: mchostpack-urz-worlds
+    prefix: hostpack/worlds
 
 packs:
   sfs:

@@ -53,10 +53,11 @@ type Capacity struct {
 }
 
 type StorageConfig struct {
-	Driver     string           `yaml:"driver" json:"driver"`
-	Filesystem FilesystemConfig `yaml:"filesystem,omitempty" json:"filesystem,omitempty"`
-	S3         S3Config         `yaml:"s3,omitempty" json:"s3,omitempty"`
-	Rclone     RcloneConfig     `yaml:"rclone,omitempty" json:"rclone,omitempty"`
+	Driver           string           `yaml:"driver" json:"driver"`
+	EvictAfterBackup bool             `yaml:"evict_after_backup,omitempty" json:"evictAfterBackup,omitempty"`
+	Filesystem       FilesystemConfig `yaml:"filesystem,omitempty" json:"filesystem,omitempty"`
+	S3               S3Config         `yaml:"s3,omitempty" json:"s3,omitempty"`
+	Rclone           RcloneConfig     `yaml:"rclone,omitempty" json:"rclone,omitempty"`
 }
 type FilesystemConfig struct {
 	Root string `yaml:"root" json:"root"`
@@ -132,6 +133,9 @@ func (c *Config) Validate() error {
 	case "filesystem":
 		if c.Storage.Filesystem.Root == "" {
 			problems = append(problems, "storage.filesystem.root is required")
+		}
+		if c.Storage.EvictAfterBackup {
+			problems = append(problems, "storage.evict_after_backup requires s3 or rclone storage")
 		}
 	case "s3":
 		if c.Storage.S3.Endpoint == "" || c.Storage.S3.Bucket == "" {
