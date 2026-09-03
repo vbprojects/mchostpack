@@ -67,7 +67,7 @@ if [[ -n "$current_image" && "$current_image" != "$image_ref" ]]; then
   apply_args+=(-replace=fly_machine.hostpack)
 fi
 
-tofu -chdir=infra apply "${apply_args[@]}"
+tofu -chdir=infra apply -auto-approve "${apply_args[@]}"
 
 # App secrets remain reported as staged for this raw (non-Fly-Launch)
 # Machine. A no-op Machines API update selects the newest secret bundle while
