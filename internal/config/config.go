@@ -37,6 +37,7 @@ type Config struct {
 
 type Runtime struct {
 	StartupWait          Duration `yaml:"startup_wait" json:"startupWait"`
+	StartupTimeout       Duration `yaml:"startup_timeout" json:"startupTimeout"`
 	StatusIdleExit       Duration `yaml:"status_idle_exit" json:"statusIdleExit"`
 	EmptyBeforeSwitch    Duration `yaml:"empty_before_switch" json:"emptyBeforeSwitch"`
 	IdleBeforeStop       Duration `yaml:"idle_before_stop" json:"idleBeforeStop"`
@@ -127,7 +128,7 @@ func (c *Config) Validate() error {
 	if c.Capacity.CPUs <= 0 {
 		problems = append(problems, "capacity.cpus must be positive")
 	}
-	if c.Runtime.StartupWait.Duration <= 0 || c.Runtime.StatusIdleExit.Duration <= 0 || c.Runtime.EmptyBeforeSwitch.Duration <= 0 || c.Runtime.IdleBeforeStop.Duration <= 0 || c.Runtime.BackendPollInterval.Duration <= 0 || c.Runtime.ShutdownTimeout.Duration <= 0 {
+	if c.Runtime.StartupWait.Duration <= 0 || c.Runtime.StartupTimeout.Duration <= 0 || c.Runtime.StatusIdleExit.Duration <= 0 || c.Runtime.EmptyBeforeSwitch.Duration <= 0 || c.Runtime.IdleBeforeStop.Duration <= 0 || c.Runtime.BackendPollInterval.Duration <= 0 || c.Runtime.ShutdownTimeout.Duration <= 0 {
 		problems = append(problems, "all runtime durations must be positive")
 	}
 	if c.Runtime.ListenAddress == "" || c.Runtime.BackendAddress == "" {

@@ -199,7 +199,7 @@ func (m *Manager) start(id string, recovery bool) {
 	m.expectedStop = false
 	m.mu.Unlock()
 	go m.waitProcess(id, proc)
-	deadline := time.Now().Add(maxDuration(m.cfg.Runtime.StartupWait.Duration*12, 5*time.Minute))
+	deadline := time.Now().Add(m.cfg.Runtime.StartupTimeout.Duration)
 	for time.Now().Before(deadline) {
 		if _, err := mcproto.QueryStatus(time.Now().Add(2*time.Second), m.cfg.Runtime.BackendAddress, id+"."+m.cfg.Domain); err == nil {
 			m.mu.Lock()
@@ -462,9 +462,3 @@ func (m *Manager) tick() {
 	}
 }
 func (m *Manager) signalDone() { m.doneOnce.Do(func() { close(m.done) }) }
-func maxDuration(a, b time.Duration) time.Duration {
-	if a > b {
-		return a
-	}
-	return b
-}

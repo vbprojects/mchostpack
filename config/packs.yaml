@@ -3,6 +3,7 @@ domain: 137-66-9-53.sslip.io
 
 runtime:
   startup_wait: 25s
+  startup_timeout: 20m
   status_idle_exit: 30s
   empty_before_switch: 2m
   idle_before_stop: 10m

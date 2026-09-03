@@ -2,9 +2,14 @@ package runtime
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func TestChildEnvironmentExcludesControlPlaneAndBackupCredentials(t *testing.T) {
@@ -108,5 +113,49 @@ func TestRemoveRuntimeCredentialFiles(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(instance, name)); !os.IsNotExist(err) {
 			t.Fatalf("runtime credential file %q still exists: %v", name, err)
 		}
+	}
+}
+
+func TestCommandProcessKillTargetsDescendants(t *testing.T) {
+	pidFile := filepath.Join(t.TempDir(), "child.pid")
+	cmd := exec.Command("sh", "-c", `sleep 30 & echo $! > "$1"; wait`, "sh", pidFile)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	process := &commandProcess{cmd: cmd}
+	t.Cleanup(func() {
+		_ = process.Kill()
+		_ = process.Wait()
+	})
+
+	var childPID int
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		data, err := os.ReadFile(pidFile)
+		if err == nil {
+			childPID, err = strconv.Atoi(strings.TrimSpace(string(data)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if childPID == 0 {
+		t.Fatal("child process did not start")
+	}
+	group, err := syscall.Getpgid(childPID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if group != cmd.Process.Pid {
+		t.Fatalf("child process group = %d, want %d", group, cmd.Process.Pid)
+	}
+	if err := process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	if err := process.Wait(); err == nil {
+		t.Fatal("SIGKILL unexpectedly produced a successful exit")
 	}
 }

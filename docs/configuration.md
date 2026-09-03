@@ -106,6 +106,8 @@ Every backend stores an archive followed by a manifest. A generation is ignored 
 
 - Status-only wakes exit after 30 seconds and never launch Java.
 - Initial login waits up to 25 seconds before asking the client to reconnect.
+- Pack installation and first world generation may take up to 20 minutes before
+  the launch is considered failed (`startup_timeout`).
 - Another pack can switch after the active pack has been empty for two minutes.
 - The Machine saves and exits after ten empty minutes.
 - Backend status failures are treated as an occupied server.

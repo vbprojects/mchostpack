@@ -89,7 +89,13 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 	if err := os.Chmod(home, 0o700); err != nil {
 		return nil, fmt.Errorf("set Minecraft runtime home permissions: %w", err)
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, NoSetGroups: true}}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Credential: &syscall.Credential{Uid: uid, Gid: gid, NoSetGroups: true},
+		// The upstream entrypoint can spawn and then replace intermediate
+		// processes. A dedicated process group lets timeout handling terminate
+		// the whole Minecraft tree instead of orphaning Java.
+		Setpgid: true,
+	}
 	env := childEnvironment(os.Environ())
 	env = append(env, "HOME="+home, "HOSTPACK_MINECRAFT_HOME="+home, "PWD="+instance, "EULA=TRUE", "SERVER_IP=127.0.0.1", "SERVER_PORT=25566", "ENABLE_STATUS=TRUE", "ONLINE_MODE=TRUE", "ENABLE_RCON=TRUE", "RCON_PORT=25575", "RCON_PASSWORD="+l.RCONPassword, "MEMORY="+strconv.Itoa(p.MemoryMB)+"M", "SKIP_CHOWN_DATA=TRUE")
 	if p.Java == 17 {
@@ -264,9 +270,15 @@ func removeRuntimeCredentialFiles(instance string) error {
 
 type commandProcess struct{ cmd *exec.Cmd }
 
-func (p *commandProcess) Wait() error                { return p.cmd.Wait() }
-func (p *commandProcess) Signal(sig os.Signal) error { return p.cmd.Process.Signal(sig) }
-func (p *commandProcess) Kill() error                { return p.cmd.Process.Kill() }
+func (p *commandProcess) Wait() error { return p.cmd.Wait() }
+func (p *commandProcess) Signal(sig os.Signal) error {
+	signal, ok := sig.(syscall.Signal)
+	if !ok {
+		return p.cmd.Process.Signal(sig)
+	}
+	return syscall.Kill(-p.cmd.Process.Pid, signal)
+}
+func (p *commandProcess) Kill() error { return syscall.Kill(-p.cmd.Process.Pid, syscall.SIGKILL) }
 
 type logWriter struct {
 	logger *slog.Logger
