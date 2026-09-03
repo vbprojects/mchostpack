@@ -93,3 +93,20 @@ func TestRemoveModrinthExcludedFiles(t *testing.T) {
 		t.Fatalf("server mod was removed: %v", err)
 	}
 }
+
+func TestRemoveRuntimeCredentialFiles(t *testing.T) {
+	instance := t.TempDir()
+	for _, name := range []string{".rcon-cli.env", ".rcon-cli.yaml"} {
+		if err := os.WriteFile(filepath.Join(instance, name), []byte("secret"), 0o640); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := removeRuntimeCredentialFiles(instance); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{".rcon-cli.env", ".rcon-cli.yaml"} {
+		if _, err := os.Stat(filepath.Join(instance, name)); !os.IsNotExist(err) {
+			t.Fatalf("runtime credential file %q still exists: %v", name, err)
+		}
+	}
+}

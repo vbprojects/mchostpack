@@ -29,6 +29,9 @@ func TestFilesystemContract(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "world", "level.dat"), []byte("world-data"), 0o640); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(source, ".rcon-cli.env"), []byte("password=secret"), 0o640); err != nil {
+		t.Fatal(err)
+	}
 	s := New(NewFilesystem(filepath.Join(root, "backups")), filepath.Join(root, "tmp"), func(string) string { return "lock" })
 	if _, ok, err := s.Head(ctx, "pack"); err != nil || ok {
 		t.Fatalf("head before commit: %v %v", ok, err)
@@ -50,6 +53,9 @@ func TestFilesystemContract(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(dest, "world", "level.dat"))
 	if err != nil || string(b) != "world-data" {
 		t.Fatalf("restored %q: %v", b, err)
+	}
+	if _, err := os.Stat(filepath.Join(dest, ".rcon-cli.env")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("runtime RCON credentials were archived: %v", err)
 	}
 }
 func TestFilesystemRejectsEscape(t *testing.T) {

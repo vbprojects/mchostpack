@@ -76,6 +76,9 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 			return nil, err
 		}
 	}
+	if err := removeRuntimeCredentialFiles(instance); err != nil {
+		return nil, err
+	}
 	home := filepath.Join(l.StateRoot, "runtime", "tmp", "minecraft-home")
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		return nil, fmt.Errorf("create Minecraft runtime home: %w", err)
@@ -88,7 +91,7 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, NoSetGroups: true}}
 	env := childEnvironment(os.Environ())
-	env = append(env, "HOME="+home, "PWD="+instance, "EULA=TRUE", "SERVER_IP=127.0.0.1", "SERVER_PORT=25566", "ENABLE_STATUS=TRUE", "ONLINE_MODE=TRUE", "ENABLE_RCON=TRUE", "RCON_PORT=25575", "RCON_PASSWORD="+l.RCONPassword, "MEMORY="+strconv.Itoa(p.MemoryMB)+"M", "SKIP_CHOWN_DATA=TRUE")
+	env = append(env, "HOME="+home, "HOSTPACK_MINECRAFT_HOME="+home, "PWD="+instance, "EULA=TRUE", "SERVER_IP=127.0.0.1", "SERVER_PORT=25566", "ENABLE_STATUS=TRUE", "ONLINE_MODE=TRUE", "ENABLE_RCON=TRUE", "RCON_PORT=25575", "RCON_PASSWORD="+l.RCONPassword, "MEMORY="+strconv.Itoa(p.MemoryMB)+"M", "SKIP_CHOWN_DATA=TRUE")
 	if p.Java == 17 {
 		env = append(env, "PATH=/opt/java17/bin:"+os.Getenv("PATH"), "JAVA_HOME=/opt/java17")
 	} else {
@@ -245,6 +248,15 @@ func removeModrinthExcludedFiles(instance string, patterns []string) error {
 				}
 				break
 			}
+		}
+	}
+	return nil
+}
+
+func removeRuntimeCredentialFiles(instance string) error {
+	for _, name := range []string{".rcon-cli.env", ".rcon-cli.yaml"} {
+		if err := os.Remove(filepath.Join(instance, name)); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove runtime credential file %q: %w", name, err)
 		}
 	}
 	return nil

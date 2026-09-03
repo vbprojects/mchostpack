@@ -160,6 +160,9 @@ func writeArchive(source string, destination io.Writer) error {
 		if rel == "." {
 			return nil
 		}
+		if rel == ".rcon-cli.env" || rel == ".rcon-cli.yaml" {
+			return nil
+		}
 		if strings.HasPrefix(rel, "logs"+string(filepath.Separator)) {
 			return nil
 		}

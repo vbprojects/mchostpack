@@ -22,8 +22,11 @@ RUN mv /opt/java/openjdk /opt/java21 \
     && rm -rf /data \
     && ln -s /state/runtime/current /data
 COPY config /app/config
+COPY --chmod=0755 scripts/repair-modrinth-results.sh /usr/local/bin/hostpack-repair-modrinth-results
 COPY --chmod=0755 scripts/container-entrypoint.sh /usr/local/bin/hostpack-entrypoint
-RUN chmod 0755 /usr/local/bin/hostpackd
+RUN chmod 0755 /usr/local/bin/hostpackd \
+    && sed -i 's|^export HOME=/data$|export HOME="${HOSTPACK_MINECRAFT_HOME:-/data}"|' /image/scripts/start-configuration \
+    && sed -i '/^applyResultsFile ${resultsFile}$/i hostpack-repair-modrinth-results "${resultsFile}"' /image/scripts/start-deployModrinth
 EXPOSE 25565/tcp
 # The upstream image uses /data as WORKDIR. Here /data points into the mounted
 # volume and its per-pack target does not exist until hostpackd initializes it.
