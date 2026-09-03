@@ -68,6 +68,11 @@ func (l *ItzgLauncher) Start(ctx context.Context, id string, p config.Pack, lp c
 			return nil, err
 		}
 	}
+	if p.Provider == "modrinth" {
+		if err := repairModrinthServerPath(instance, uid, gid); err != nil {
+			return nil, err
+		}
+	}
 	home := filepath.Join(l.StateRoot, "runtime", "tmp", "minecraft-home")
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		return nil, fmt.Errorf("create Minecraft runtime home: %w", err)
@@ -151,6 +156,60 @@ func childEnvironment(parent []string) []string {
 		result = append(result, entry)
 	}
 	return result
+}
+
+func repairModrinthServerPath(instance string, uid, gid uint32) error {
+	path := filepath.Join(instance, ".install-modrinth.env")
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read Modrinth installer results: %w", err)
+	}
+	lines := strings.Split(string(data), "\n")
+	changed := false
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "SERVER=") {
+			continue
+		}
+		value := strings.Trim(strings.TrimPrefix(line, "SERVER="), "\"'")
+		if value != "run.sh" && filepath.Base(value) == "run.sh" {
+			if _, statErr := os.Stat(filepath.Join(instance, "run.sh")); statErr == nil {
+				lines[i] = `SERVER="run.sh"`
+				changed = true
+			}
+		}
+		break
+	}
+	if !changed {
+		return nil
+	}
+	tmp, err := os.CreateTemp(instance, ".install-modrinth-repair-")
+	if err != nil {
+		return fmt.Errorf("repair Modrinth installer results: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if _, err = tmp.WriteString(strings.Join(lines, "\n")); err == nil {
+		err = tmp.Sync()
+	}
+	if err == nil {
+		err = tmp.Chmod(0o640)
+	}
+	if err == nil {
+		err = tmp.Chown(int(uid), int(gid))
+	}
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return fmt.Errorf("repair Modrinth installer results: %w", err)
+	}
+	if err = os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replace Modrinth installer results: %w", err)
+	}
+	return nil
 }
 
 type commandProcess struct{ cmd *exec.Cmd }
