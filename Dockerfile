@@ -1,5 +1,5 @@
 # Production builds should override these arguments with immutable digest references.
-ARG GO_IMAGE=golang:1.24-bookworm
+ARG GO_IMAGE=golang:1.26-bookworm
 ARG JAVA17_IMAGE=eclipse-temurin:17-jre-jammy
 ARG MINECRAFT_IMAGE=itzg/minecraft-server:java21
 
