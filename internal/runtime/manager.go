@@ -31,7 +31,7 @@ type Manager struct {
 	state        State
 	process      Process
 	expectedStop bool
-	started      time.Time
+	lastActivity time.Time
 	loginSeen    bool
 	done         chan struct{}
 	doneOnce     sync.Once
@@ -45,7 +45,8 @@ type ResourceSizer interface {
 
 func NewManager(cfg *config.Config, lock *config.LockFile, st store.Store, launcher Launcher, sizer ResourceSizer, stateRoot string, logger *slog.Logger) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	m := &Manager{cfg: cfg, lock: lock, store: st, launcher: launcher, sizer: sizer, stateFile: NewStateFile(filepath.Join(stateRoot, "runtime", "active.json")), stateRoot: stateRoot, rcon: rcon.Client{Address: "127.0.0.1:25575", Password: os.Getenv("RCON_PASSWORD")}, log: logger, started: time.Now(), done: make(chan struct{}), ctx: ctx, cancel: cancel}
+	now := time.Now()
+	m := &Manager{cfg: cfg, lock: lock, store: st, launcher: launcher, sizer: sizer, stateFile: NewStateFile(filepath.Join(stateRoot, "runtime", "active.json")), stateRoot: stateRoot, rcon: rcon.Client{Address: "127.0.0.1:25575", Password: os.Getenv("RCON_PASSWORD")}, log: logger, lastActivity: now, done: make(chan struct{}), ctx: ctx, cancel: cancel}
 	m.state, _ = m.stateFile.Load()
 	if m.state.Phase != Idle && m.state.ActiveID != "" {
 		m.state.Phase = Recovering
@@ -58,9 +59,11 @@ func NewManager(cfg *config.Config, lock *config.LockFile, st store.Store, launc
 func (m *Manager) Done() <-chan struct{} { return m.done }
 func (m *Manager) Close()                { m.cancel() }
 func (m *Manager) State() State          { m.mu.Lock(); defer m.mu.Unlock(); return m.state }
+func (m *Manager) Touch()                { m.mu.Lock(); m.lastActivity = time.Now(); m.mu.Unlock() }
 func (m *Manager) Ensure(id string) (bool, string) {
 	m.mu.Lock()
 	m.loginSeen = true
+	m.lastActivity = time.Now()
 	switch {
 	case m.state.Phase == Idle:
 		m.state = State{Phase: Loading, ActiveID: id, PackLockDigest: m.lock.Packs[id].IdentityDigest}
@@ -413,8 +416,9 @@ func (m *Manager) tick() {
 	phase := m.state.Phase
 	id := m.state.ActiveID
 	login := m.loginSeen
+	lastActivity := m.lastActivity
 	m.mu.Unlock()
-	if phase == Idle && !login && time.Since(m.started) >= m.cfg.Runtime.StatusIdleExit.Duration {
+	if phase == Idle && !login && time.Since(lastActivity) >= m.cfg.Runtime.StatusIdleExit.Duration {
 		m.signalDone()
 		return
 	}

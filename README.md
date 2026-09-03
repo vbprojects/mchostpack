@@ -2,7 +2,7 @@
 
 Hostpack runs one of several pinned Minecraft Java modpacks on one Fly Machine. Players choose a pack with a hostname such as `atm9.mc.example.com`; only one pack and world can be active at a time. The Machine exits after a clean idle save so Fly Proxy can wake the same Machine on the next connection.
 
-This repository is an MVP intended for a small, operator-managed deployment. It has no web control plane or database.
+This repository is an MVP intended for a small, operator-managed deployment. It has a read-only authenticated status dashboard, but no mutation API or database.
 
 ## What is implemented
 
@@ -17,6 +17,7 @@ This repository is an MVP intended for a small, operator-managed deployment. It 
 - Optional verified remote eviction keeps at most one complete pack on the volume.
 - OpenTofu provisioning for one Fly app, dedicated IPv4, volume, and stopped Machine.
 - Manual, digest-pinned deployment guarded against replacing an active Machine.
+- Authenticated web status, resource summaries, and bounded recent logs.
 
 ## Quick local validation
 
@@ -40,6 +41,10 @@ go run ./cmd/hostpackd lock \
   --lock config/packs.lock.json
 docker compose up --build
 ```
+
+The local dashboard is available at `http://localhost:8080`. Its default local
+credentials are `hostpack` / `local-dashboard-only`; set
+`HOSTPACK_WEB_PASSWORD` in `.env` before sharing the port.
 
 CurseForge lock generation requires `CF_API_KEY`. Never commit `.env`, rclone configuration, RCON passwords, or object-storage credentials.
 

@@ -6,7 +6,7 @@ import (
 )
 
 func validConfig() *Config {
-	return &Config{Schema: 1, Domain: "mc.example.com", Runtime: Runtime{StartupWait: Duration{time.Second}, StartupTimeout: Duration{time.Minute}, StatusIdleExit: Duration{time.Second}, EmptyBeforeSwitch: Duration{time.Second}, IdleBeforeStop: Duration{time.Second}, BackendPollInterval: Duration{time.Second}, ShutdownTimeout: Duration{time.Second}, MaxConnections: 2, ConnectionsPerMinute: 3, ListenAddress: ":1", BackendAddress: "127.0.0.1:2"}, Capacity: Capacity{MemoryMB: 4096, CPUs: 4}, Storage: StorageConfig{Driver: "filesystem", Filesystem: FilesystemConfig{Root: "/tmp/b"}}, Packs: map[string]Pack{"alpha": {DisplayName: "Alpha", Provider: "modrinth", ProjectID: "p", VersionID: "v", Java: 17, MemoryMB: 2048, MachineMemoryMB: 3072, MachineCPUs: 2}}}
+	return &Config{Schema: 1, Domain: "mc.example.com", Runtime: Runtime{StartupWait: Duration{time.Second}, StartupTimeout: Duration{time.Minute}, StatusIdleExit: Duration{time.Second}, EmptyBeforeSwitch: Duration{time.Second}, IdleBeforeStop: Duration{time.Second}, BackendPollInterval: Duration{time.Second}, ShutdownTimeout: Duration{time.Second}, MaxConnections: 2, ConnectionsPerMinute: 3, ListenAddress: ":1", BackendAddress: "127.0.0.1:2", WebListenAddress: "127.0.0.1:3"}, Capacity: Capacity{MemoryMB: 4096, CPUs: 4}, Storage: StorageConfig{Driver: "filesystem", Filesystem: FilesystemConfig{Root: "/tmp/b"}}, Packs: map[string]Pack{"alpha": {DisplayName: "Alpha", Provider: "modrinth", ProjectID: "p", VersionID: "v", Java: 17, MemoryMB: 2048, MachineMemoryMB: 3072, MachineCPUs: 2}}}
 }
 
 func TestPackForHost(t *testing.T) {

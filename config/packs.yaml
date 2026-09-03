@@ -13,6 +13,7 @@ runtime:
   connections_per_minute: 30
   listen_address: ":25565"
   backend_address: "127.0.0.1:25566"
+  web_listen_address: ":8080"
 
 capacity:
   memory_mb: 8192

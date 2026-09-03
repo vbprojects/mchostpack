@@ -11,6 +11,12 @@ fly ssh console --app YOUR_UNIQUE_APP --command 'hostpackd backup list'
 
 Logs are structured JSON and include pack, phase, generation, and failure context. Runtime state is stored at `/state/runtime/active.json`; do not edit it while Java is running.
 
+The same state and the most recent bounded logs are available at
+`https://YOUR_UNIQUE_APP.fly.dev`. The dashboard is read-only and protected by
+the `HOSTPACK_WEB_PASSWORD` Fly secret. Opening it wakes the Machine; continuous
+polling keeps it awake, and closing it allows a status-only Machine to exit
+after 30 seconds.
+
 `RESIZING` means Hostpack submitted a Fly Machine CPU/RAM update before Java
 started. The update reboots the VM and recovery continues the requested pack;
 the player should reconnect. If it becomes `FAILED`, confirm

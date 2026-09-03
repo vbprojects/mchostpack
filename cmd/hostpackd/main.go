@@ -5,8 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -21,6 +23,7 @@ import (
 	"github.com/hostpack/hostpack/internal/router"
 	hpruntime "github.com/hostpack/hostpack/internal/runtime"
 	"github.com/hostpack/hostpack/internal/store"
+	"github.com/hostpack/hostpack/internal/webui"
 )
 
 const usage = `hostpackd <command>
@@ -161,7 +164,16 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	webPassword := os.Getenv("HOSTPACK_WEB_PASSWORD")
+	if len(webPassword) < 16 {
+		return errors.New("HOSTPACK_WEB_PASSWORD must contain at least 16 characters")
+	}
+	logBuffer, err := webui.NewLogBuffer(filepath.Join(c.stateRoot, "runtime", "dashboard.log"), 500, 4<<20)
+	if err != nil {
+		return fmt.Errorf("open dashboard log: %w", err)
+	}
+	defer logBuffer.Close()
+	logger := slog.New(slog.NewJSONHandler(io.MultiWriter(os.Stdout, logBuffer), nil))
 	slog.SetDefault(logger)
 	st, err := makeStore(cfg, lock, c.stateRoot)
 	if err != nil {
@@ -174,18 +186,45 @@ func serve(args []string) error {
 	}
 	manager := hpruntime.NewManager(cfg, lock, st, launcher, sizer, c.stateRoot, logger)
 	defer manager.Close()
-	ln, err := net.Listen("tcp", cfg.Runtime.ListenAddress)
+	minecraftListener, err := net.Listen("tcp", cfg.Runtime.ListenAddress)
 	if err != nil {
 		return err
 	}
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	webListener, err := net.Listen("tcp", cfg.Runtime.WebListenAddress)
+	if err != nil {
+		_ = minecraftListener.Close()
+		return err
+	}
+	signalCtx, stopSignals := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stopSignals()
+	ctx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
-	logger.Info("hostpackd listening", "address", cfg.Runtime.ListenAddress, "domain", cfg.Domain)
-	serveErr := router.New(cfg, manager, logger).Serve(ctx, ln)
+	webServer := &http.Server{
+		Handler:           webui.New(cfg, manager, logBuffer, envDefault("HOSTPACK_WEB_USERNAME", "hostpack"), webPassword).Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
+	webErr := make(chan error, 1)
+	go func() {
+		err := webServer.Serve(webListener)
+		webErr <- err
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			cancel()
+		}
+	}()
+	logger.Info("hostpackd listening", "minecraft_address", cfg.Runtime.ListenAddress, "web_address", cfg.Runtime.WebListenAddress, "domain", cfg.Domain)
+	serveErr := router.New(cfg, manager, logger).Serve(ctx, minecraftListener)
+	webShutdownCtx, webShutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	webShutdownErr := webServer.Shutdown(webShutdownCtx)
+	webShutdownCancel()
+	webServeErr := <-webErr
+	if errors.Is(webServeErr, http.ErrServerClosed) {
+		webServeErr = nil
+	}
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.Runtime.ShutdownTimeout.Duration)
 	defer shutdownCancel()
 	shutdownErr := manager.Shutdown(shutdownCtx)
-	return errors.Join(serveErr, shutdownErr)
+	return errors.Join(serveErr, webServeErr, webShutdownErr, shutdownErr)
 }
 func backupCommand(args []string) error {
 	if len(args) == 0 {
@@ -256,7 +295,7 @@ func doctor(args []string) error {
 	checks := []struct {
 		name string
 		err  error
-	}{{"state runtime", writable(filepath.Join(c.stateRoot, "runtime"))}, {"Java 17", executable("/opt/java17/bin/java")}, {"Java 21", executable("/opt/java21/bin/java")}, {"start command", executable(envDefault("HOSTPACK_START_COMMAND", "/start"))}}
+	}{{"state runtime", writable(filepath.Join(c.stateRoot, "runtime"))}, {"Java 17", executable("/opt/java17/bin/java")}, {"Java 21", executable("/opt/java21/bin/java")}, {"start command", executable(envDefault("HOSTPACK_START_COMMAND", "/start"))}, {"dashboard password", minimumEnvironmentLength("HOSTPACK_WEB_PASSWORD", 16)}}
 	st, storeErr := makeStore(cfg, lock, c.stateRoot)
 	if storeErr == nil {
 		_, _, storeErr = st.Head(context.Background(), firstPack(cfg))
@@ -302,6 +341,12 @@ func firstPack(c *config.Config) string {
 		return id
 	}
 	return "doctor"
+}
+func minimumEnvironmentLength(name string, minimum int) error {
+	if len(os.Getenv(name)) < minimum {
+		return fmt.Errorf("%s must contain at least %d characters", name, minimum)
+	}
+	return nil
 }
 func writable(path string) error {
 	if err := os.MkdirAll(path, 0o750); err != nil {

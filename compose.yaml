@@ -6,9 +6,11 @@ services:
       HOSTPACK_LOCK: /app/config/packs.lock.json
       HOSTPACK_STATE: /state
       RCON_PASSWORD: ${RCON_PASSWORD:-local-development-only}
+      HOSTPACK_WEB_PASSWORD: ${HOSTPACK_WEB_PASSWORD:-local-dashboard-only}
       CF_API_KEY: ${CF_API_KEY:-}
     ports:
       - "25565:25565"
+      - "8080:8080"
     volumes:
       - ./config:/app/config:ro
       - ./state:/state

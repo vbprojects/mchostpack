@@ -77,4 +77,29 @@ resource "fly_machine" "hostpack" {
       port = 25565
     }
   }
+
+  service {
+    protocol             = "tcp"
+    internal_port        = 8080
+    autostart            = true
+    autostop             = false
+    min_machines_running = 0
+
+    concurrency {
+      type       = "connections"
+      soft_limit = 20
+      hard_limit = 40
+    }
+
+    port {
+      port        = 80
+      handlers    = ["http"]
+      force_https = true
+    }
+
+    port {
+      port     = 443
+      handlers = ["tls", "http"]
+    }
+  }
 }

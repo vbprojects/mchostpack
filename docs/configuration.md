@@ -105,6 +105,9 @@ Every backend stores an archive followed by a manifest. A generation is ignored 
 ## Runtime defaults
 
 - Status-only wakes exit after 30 seconds and never launch Java.
+- The authenticated dashboard listens on `web_listen_address` (`:8080` in the
+  example). Dashboard polling keeps an otherwise-idle Machine awake; it exits
+  30 seconds after the browser stops polling.
 - Initial login waits up to 25 seconds before asking the client to reconnect.
 - Pack installation and first world generation may take up to 20 minutes before
   the launch is considered failed (`startup_timeout`).
@@ -114,3 +117,16 @@ Every backend stores an archive followed by a manifest. A generation is ignored 
 
 The configured capacity ceilings must cover every pack. Leave volume headroom
 for installation downloads, world growth, and atomic restore staging.
+
+## Dashboard credentials and logs
+
+The dashboard requires `HOSTPACK_WEB_PASSWORD` with at least 16 characters.
+The username defaults to `hostpack` and can be changed with
+`HOSTPACK_WEB_USERNAME`. These values belong in `.env` or Fly secrets, never in
+`packs.yaml`.
+
+Recent structured logs are kept in memory and in rotating files at
+`/state/runtime/dashboard.log`. The current file is capped at 4 MiB and one
+previous file is retained. The API returns at most 500 recent entries. The
+dashboard is read-only and cannot start, stop, switch, restore, or resize a
+pack.

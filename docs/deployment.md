@@ -27,6 +27,7 @@ Set secrets separately so their values do not enter OpenTofu state:
 ```bash
 fly secrets set --stage --app YOUR_UNIQUE_APP \
   RCON_PASSWORD='LONG_RANDOM_VALUE' \
+  HOSTPACK_WEB_PASSWORD='A_DIFFERENT_LONG_RANDOM_VALUE' \
   HOSTPACK_FLY_API_TOKEN='APP_SCOPED_DEPLOY_TOKEN' \
   CF_API_KEY='CURSEFORGE_KEY' \
   AWS_ACCESS_KEY_ID='BACKUP_KEY' \
@@ -63,6 +64,15 @@ Create this DNS record using the `dedicated_ipv4` output:
 ```text
 *.mc.example.com  A  <tofu output dedicated_ipv4>
 ```
+
+The dashboard uses Fly's HTTPS endpoint and does not require your own domain:
+
+```text
+https://YOUR_UNIQUE_APP.fly.dev
+```
+
+Sign in as `hostpack` using `HOSTPACK_WEB_PASSWORD`. Port 80 redirects to HTTPS;
+do not send dashboard credentials over plain HTTP outside local development.
 
 Start the stopped Machine once for diagnostics:
 

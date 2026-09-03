@@ -47,6 +47,7 @@ type Runtime struct {
 	ConnectionsPerMinute int      `yaml:"connections_per_minute" json:"connectionsPerMinute"`
 	ListenAddress        string   `yaml:"listen_address" json:"listenAddress"`
 	BackendAddress       string   `yaml:"backend_address" json:"backendAddress"`
+	WebListenAddress     string   `yaml:"web_listen_address" json:"webListenAddress"`
 }
 
 type Capacity struct {
@@ -131,8 +132,8 @@ func (c *Config) Validate() error {
 	if c.Runtime.StartupWait.Duration <= 0 || c.Runtime.StartupTimeout.Duration <= 0 || c.Runtime.StatusIdleExit.Duration <= 0 || c.Runtime.EmptyBeforeSwitch.Duration <= 0 || c.Runtime.IdleBeforeStop.Duration <= 0 || c.Runtime.BackendPollInterval.Duration <= 0 || c.Runtime.ShutdownTimeout.Duration <= 0 {
 		problems = append(problems, "all runtime durations must be positive")
 	}
-	if c.Runtime.ListenAddress == "" || c.Runtime.BackendAddress == "" {
-		problems = append(problems, "runtime listen and backend addresses are required")
+	if c.Runtime.ListenAddress == "" || c.Runtime.BackendAddress == "" || c.Runtime.WebListenAddress == "" {
+		problems = append(problems, "runtime listen, backend, and web listen addresses are required")
 	}
 	if c.Runtime.MaxConnections <= 0 || c.Runtime.ConnectionsPerMinute <= 0 {
 		problems = append(problems, "connection limits must be positive")
